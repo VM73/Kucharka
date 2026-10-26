@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F7F2E9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1D1A20" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Kuchařka">
+<title>Kuchařka</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Caveat:wght@500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #F7F2E9; --pruh: #ECE5F2; --karta: rgba(255,255,255,.94); --cara: #EFE8DD; --okraj: #E8DFD2;
+  --text: #3A3330; --text2: #6E655E; --text3: #9A9089;
+  --akcent: #6A5A96; --akcent-tm: #4E4176; --akcent-sv: #ECE5F2;
+  --salvej: #5F7254; --salvej-sv: #E6ECDF; --ruze: #9A5B6E; --ruze-sv: #F3E6E3;
+  --papir: #FBF6EC; --papir-okraj: #E8DCC7; --nejiste: #FBE7B5; --chyba: #C2412D;
+  --serif: 'Cormorant Garamond', Georgia, serif; --ruka: 'Caveat', cursive;
+  --sys: -apple-system, 'SF Pro Text', system-ui, 'Segoe UI', sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1D1A20; --pruh: #25212B; --karta: rgba(43,39,48,.96); --cara: #3A3540; --okraj: #3A3540;
+    --text: #F0EBE6; --text2: #B9B0A8; --text3: #8A8279;
+    --akcent: #A898D6; --akcent-tm: #C9BEEA; --akcent-sv: #3A3350;
+    --salvej: #A9BC9C; --salvej-sv: #2E3A2A; --ruze: #D8A0B0; --ruze-sv: #43303A;
+    --papir: #2E2A24; --papir-okraj: #4A4236; --nejiste: #6B5520; --chyba: #FF7A66;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { background: var(--bg); }
+body {
+  margin: 0; font-family: var(--sys); color: var(--text); font-size: 16px;
+  background: repeating-linear-gradient(90deg, var(--bg) 0 26px, var(--pruh) 26px 30px, var(--bg) 30px 38px, var(--pruh) 38px 40px) fixed;
+  min-height: 100vh;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+#app {
+  max-width: 600px; margin: 0 auto;
+  padding: max(12px, env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 14px;
+}
+.lista { display: flex; align-items: center; justify-content: space-between; min-height: 44px; gap: 8px; }
+.lista .stred { font-weight: 600; font-size: 17px; text-align: center; flex: 1; }
+.odkaz { background: none; border: none; color: var(--akcent); font-size: 17px; min-height: 44px; padding: 0 2px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.odkaz.tucny { font-weight: 600; }
+.odkaz:disabled { color: var(--text3); }
+.ikonka { width: 44px; height: 44px; border-radius: 22px; border: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; background: transparent; color: var(--akcent); }
+.ikonka.plne { background: var(--akcent); color: #fff; box-shadow: 0 4px 12px rgba(90,74,130,.25); }
+h1 { margin: 0; font-family: var(--serif); font-weight: 700; font-size: 40px; line-height: 1.02; }
+h1.mensi { font-size: 32px; }
+.podtitul { font-size: 14px; color: var(--text2); margin-top: 4px; }
+.sekce { display: flex; flex-direction: column; gap: 6px; }
+.sekce > .nadpis { font-size: 13px; letter-spacing: .6px; color: var(--text2); padding-left: 4px; text-transform: uppercase; }
+.karta { background: var(--karta); border: 1px solid var(--okraj); border-radius: 14px; overflow: hidden; }
+.radek { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 14px; border: none; background: transparent; text-align: left; cursor: pointer; border-bottom: 1px solid var(--cara); }
+.radek:last-child { border-bottom: none; }
+.radek .hl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.radek .nazev { font-size: 17px; }
+.radek .meta { font-size: 13px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.radek .pocet { color: var(--text2); font-size: 15px; }
+.sipka { width: 8px; height: 14px; flex-shrink: 0; color: var(--text3); }
+.dlazdice { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--akcent-sv); color: var(--akcent); }
+.nahled { width: 56px; height: 56px; border-radius: 10px; flex-shrink: 0; object-fit: cover; background: var(--papir); border: 1px solid var(--papir-okraj); display: flex; align-items: center; justify-content: center; font-family: var(--ruka); font-size: 26px; color: var(--akcent); overflow: hidden; }
+.recept-nazev { font-family: var(--serif); font-weight: 700; font-size: 20px; line-height: 1.1; }
+.hledat { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: 12px; background: var(--karta); border: 1px solid var(--okraj); }
+.hledat input { flex: 1; border: none; background: transparent; outline: none; font-size: 16px; min-height: 42px; }
+.segment { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; padding: 2px; border-radius: 10px; background: rgba(106,90,150,.14); }
+.segment button { min-height: 34px; border: none; border-radius: 8px; background: transparent; font-size: 14px; cursor: pointer; }
+.segment button.vybrano { background: var(--karta); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.stitky { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; align-items: center; }
+.stitky::-webkit-scrollbar { display: none; }
+.stitek { min-height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--okraj); background: var(--karta); white-space: nowrap; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.stitek.vybrano { background: var(--akcent); border-color: var(--akcent); color: #fff; font-weight: 600; }
+.stitek.info { cursor: default; min-height: 26px; font-size: 13px; padding: 0 10px; border: none; }
+.stitek.lev { background: var(--akcent-sv); color: var(--akcent-tm); }
+.stitek.ruz { background: var(--ruze-sv); color: var(--ruze); }
+.stitek.sal { background: var(--salvej-sv); color: var(--salvej); }
+.mrizka2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.karticka { display: flex; flex-direction: column; border-radius: 14px; background: var(--karta); border: 1px solid var(--okraj); overflow: hidden; cursor: pointer; text-align: left; padding: 0; }
+.karticka .hlava { height: 84px; background: var(--akcent-sv); display: flex; align-items: center; padding: 0 12px; font-family: var(--ruka); font-size: 22px; color: var(--akcent-tm); overflow: hidden; }
+.karticka .hlava img { width: calc(100% + 24px); margin: 0 -12px; height: 84px; object-fit: cover; }
+.karticka .telo { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+.tlacitko { min-height: 50px; border-radius: 14px; border: none; background: var(--akcent); color: #fff; font-size: 17px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; width: 100%; padding: 0 16px; }
+.tlacitko.druhe { background: var(--karta); color: var(--akcent); border: 1.5px solid var(--akcent); }
+.tlacitko.tiche { background: transparent; color: var(--akcent); min-height: 44px; font-weight: 500; font-size: 16px; }
+.tlacitko.cervene { background: transparent; color: var(--chyba); min-height: 44px; font-weight: 500; font-size: 16px; }
+.tlacitko:disabled { opacity: .5; }
+.papir { background: var(--papir); border: 1px solid var(--papir-okraj); border-radius: 4px 14px 14px 14px; padding: 10px 14px 12px; }
+.papir .nad { font-size: 12px; letter-spacing: .5px; color: var(--text2); }
+.papir .ruka { font-family: var(--ruka); font-size: 23px; line-height: 1.15; color: var(--akcent-tm); white-space: pre-line; }
+.varovani { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--papir); border: 1px solid #E8C9A8; }
+.varovani .r { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.35; }
+.surovina { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 8px 14px; border-bottom: 1px solid var(--cara); font-size: 16px; }
+.surovina:last-child { border-bottom: none; }
+.surovina .mn { font-weight: 600; color: var(--akcent-tm); text-align: right; }
+.surovina .g { display: block; font-size: 12px; font-weight: 400; color: var(--text2); }
+.skupina-nadpis { font-size: 12px; letter-spacing: 1px; font-weight: 600; color: var(--akcent-tm); padding: 10px 14px 2px; text-transform: uppercase; }
+.krok { display: flex; gap: 10px; align-items: flex-start; padding: 6px 0; }
+.krok .c { width: 24px; height: 24px; flex-shrink: 0; border-radius: 12px; background: var(--akcent); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.krok .t { font-size: 16px; line-height: 1.45; }
+.foto-pokrmu { width: 76px; height: 76px; flex-shrink: 0; border-radius: 14px; border: 2px dashed #CFC3DF; background: var(--karta); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--akcent-tm); font-size: 11px; line-height: 1.1; text-align: center; cursor: pointer; padding: 0; overflow: hidden; position: relative; }
+.foto-pokrmu img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.foto-pokrmu.ma { border: 1px solid var(--okraj); }
+.strany { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.strana { display: flex; flex-direction: column; gap: 6px; }
+.strana .obr { position: relative; aspect-ratio: 3 / 4; border-radius: 12px; overflow: hidden; background: var(--karta); border: 1px solid var(--okraj); box-shadow: 0 4px 12px rgba(80,60,40,.12); }
+.strana .obr img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.strana .cislo { position: absolute; top: 8px; left: 8px; width: 26px; height: 26px; border-radius: 13px; background: var(--akcent); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.strana .ovl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.strana .ovl button { min-height: 40px; border: none; border-radius: 10px; background: var(--karta); color: var(--akcent); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.strana .ovl button:disabled { opacity: .35; }
+.pridat-stranu { aspect-ratio: 3 / 4; border-radius: 12px; border: 2px dashed #CFC3DF; background: rgba(255,255,255,.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--akcent-tm); cursor: pointer; text-align: center; padding: 8px; }
+@media (prefers-color-scheme: dark) { .pridat-stranu { background: rgba(43,39,48,.6); } }
+.pridat-stranu .kruh { width: 52px; height: 52px; border-radius: 26px; background: var(--akcent-sv); display: flex; align-items: center; justify-content: center; }
+.skryty { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+.pole { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--cara); }
+.pole:last-child { border-bottom: none; }
+.pole > label, .pole > .popis { font-size: 12px; letter-spacing: .5px; color: var(--text2); text-transform: uppercase; }
+.pole input, .pole select, .pole textarea { width: 100%; border: none; background: transparent; font-size: 16px; padding: 4px 0; outline: none; }
+.pole textarea { resize: vertical; min-height: 44px; }
+.pole input.serif { font-family: var(--serif); font-size: 26px; font-weight: 700; }
+.pole textarea.ruka { font-family: var(--ruka); font-size: 22px; }
+.pole select { -webkit-appearance: none; appearance: none; background: none; color: var(--akcent-tm); font-weight: 600; }
+.edit-sur { display: grid; grid-template-columns: 96px minmax(0, 1fr) 36px; gap: 8px; align-items: center; padding: 4px 8px 4px 14px; border-bottom: 1px solid var(--cara); }
+.edit-sur input { border: none; background: transparent; font-size: 16px; min-height: 38px; outline: none; width: 100%; }
+.edit-sur input.mn { font-weight: 600; color: var(--akcent-tm); text-align: right; }
+.edit-krok { display: grid; grid-template-columns: 24px minmax(0, 1fr) 36px; gap: 10px; align-items: start; padding: 8px 8px 8px 14px; border-bottom: 1px solid var(--cara); }
+.edit-krok textarea { border: none; background: transparent; font-size: 16px; line-height: 1.4; resize: none; outline: none; width: 100%; min-height: 44px; field-sizing: content; }
+.mini { width: 36px; height: 36px; border: none; background: transparent; color: var(--text3); border-radius: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.pridej { background: none; border: none; color: var(--akcent); font-size: 15px; font-weight: 600; min-height: 44px; padding: 0 14px; text-align: left; cursor: pointer; width: 100%; }
+.nejiste { background: var(--nejiste); border-bottom: 2px dotted #B07A1E; border-radius: 3px; padding: 0 3px; }
+.vyrez { position: relative; height: 140px; border-radius: 12px; overflow: hidden; border: 1px solid var(--okraj); background: var(--karta); }
+.vyrez img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; }
+.vyrez button { position: absolute; right: 8px; bottom: 8px; min-height: 32px; padding: 0 12px; border: none; border-radius: 16px; background: rgba(255,255,255,.95); color: #4E4176; font-weight: 600; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.15); cursor: pointer; }
+.prazdne { text-align: center; color: var(--text2); padding: 28px 16px; font-size: 15px; line-height: 1.45; }
+.prazdne .ruka { font-family: var(--ruka); font-size: 28px; color: var(--akcent); display: block; margin-bottom: 4px; }
+.prekryv { position: fixed; inset: 0; background: rgba(20,16,24,.92); z-index: 50; display: flex; flex-direction: column; }
+.prekryv .hora { display: flex; justify-content: space-between; align-items: center; padding: max(10px, env(safe-area-inset-top)) 12px 8px; color: #fff; }
+.prekryv .hora button { color: #fff; background: none; border: none; font-size: 17px; min-height: 44px; padding: 0 8px; cursor: pointer; }
+.prekryv .obsah { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 0 0 env(safe-area-inset-bottom); display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.prekryv .obsah img { width: 100%; max-width: 900px; height: auto; }
+.prekryv .obsah img.zoom { width: 200%; max-width: none; }
+.cekani { position: fixed; inset: 0; z-index: 60; background: rgba(247,242,233,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; text-align: center; }
+@media (prefers-color-scheme: dark) { .cekani { background: rgba(29,26,32,.94); } }
+.cekani .ruka { font-family: var(--ruka); font-size: 34px; color: var(--akcent); }
+.cekani .p { color: var(--text2); font-size: 15px; }
+.vetvicka { animation: kyv 1.6s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes kyv { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: #3A3330; color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 15px; z-index: 70; box-shadow: 0 6px 20px rgba(0,0,0,.25); max-width: 90vw; }
+.chyby { border: 2px solid var(--chyba); border-radius: 12px; padding: 10px 12px; color: var(--chyba); font-size: 13px; background: var(--karta); white-space: pre-wrap; word-break: break-word; }
+.paticka { text-align: center; font-size: 12px; color: var(--text3); }
+.login { display: flex; flex-direction: column; gap: 16px; padding-top: 10vh; }
+.login .karta .pole input { font-size: 17px; }
+.nakup-radek { width: 100%; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 14px; border: none; border-bottom: 1px solid var(--cara); background: transparent; text-align: left; cursor: pointer; }
+.nakup-radek:last-child { border-bottom: none; }
+.nakup-radek .hl { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.nakup-radek .mn { font-weight: 600; color: var(--akcent-tm); white-space: nowrap; font-size: 15px; }
+.nakup-radek.mam .nazev, .nakup-radek.mam .mn { text-decoration: line-through; color: var(--text3); }
+.krokovac { display: flex; gap: 2px; padding: 2px; border-radius: 9px; background: rgba(106,90,150,.14); }
+.krokovac button { width: 44px; height: 34px; border: none; border-radius: 7px; background: var(--karta); font-size: 20px; cursor: pointer; }
+.paticka-recept { font-size: 12px; color: var(--text3); display: flex; justify-content: space-between; gap: 8px; padding: 0 4px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+// ====== NASTAVENÍ – doplnit z Supabase → Project Settings → API ======
+const SUPABASE_URL = 'https://pqehuuamgecmdmrdhmza.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_6SgwttYu1LHUrAeInwv1Qw_chrfScN7';
+const FUNKCE = 'kucharka';
+const VERZE = '1.1';
+// =====================================================================
+
+const DEMO = /VAS-PROJEKT/.test(SUPABASE_URL) || new URLSearchParams(location.search).has('demo');
+const DEBUG = new URLSearchParams(location.search).has('debug');
+const chyby = [];
+function zapisChybu(t) { chyby.push(String(t)); if (chyby.length > 5) chyby.shift(); try { render(); } catch (e) { /* ignorovat */ } }
+window.addEventListener('error', (e) => zapisChybu(e.message + (e.filename ? ' @' + e.filename.split('/').pop() + ':' + e.lineno : '')));
+window.addEventListener('unhandledrejection', (e) => zapisChybu('Promise: ' + (e.reason?.message || e.reason)));
+function log(...a) { if (DEBUG) console.log('[kucharka]', ...a); }
+
+// ---------- pomocné ----------
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const bezDiakritiky = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const noveId = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now().toString(36) + Math.random().toString(36).slice(2));
+const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignorovat */ } };
+function pocetRec(n) { return n === 1 ? '1 recept' : (n >= 2 && n <= 4 ? n + ' recepty' : n + ' receptů'); }
+let toastCas;
+function toast(t) {
+  document.querySelector('.toast')?.remove();
+  const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d);
+  clearTimeout(toastCas); toastCas = setTimeout(() => d.remove(), 2600);
+}
+
+const IK = {
+  sipka: '<svg class="sipka" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  zpet: '<svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" stroke="currentColor" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  plus: '<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v14M3 10h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  lupa: '<svg width="17" height="17" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6" stroke="currentColor" stroke-width="2" fill="none"/><path d="M13 13l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  ozubene: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  foto: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>',
+  fotoPlus: '<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/><path d="M12 10v6M9 13h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  galerie: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M3 16l5-5 4 4 3-3 6 6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round"/></svg>',
+  otocit: '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  vlevo: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  vpravo: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  kos: '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  krizek: '<svg width="14" height="14" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  pozor: '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink:0;color:var(--ruze)"><path d="M12 3l9 16H3zM12 10v4M12 16.5v.5" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg>',
+  dokument: '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h10l4 4v12H5zM8 11h8M8 15h6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg>',
+  vetvicka: (v = 24) => `<svg width="${v}" height="${v}" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 26V8" stroke="#7A8B6F" stroke-width="1.6" fill="none" stroke-linecap="round"/><ellipse cx="14" cy="6" rx="2.2" ry="3.2" fill="#8C7DB8"/><ellipse cx="11.4" cy="10" rx="2" ry="3" fill="#8C7DB8" transform="rotate(-25 11.4 10)"/><ellipse cx="16.6" cy="10" rx="2" ry="3" fill="#8C7DB8" transform="rotate(25 16.6 10)"/><ellipse cx="11.6" cy="14.5" rx="1.9" ry="2.8" fill="#A497C9" transform="rotate(-25 11.6 14.5)"/><ellipse cx="16.4" cy="14.5" rx="1.9" ry="2.8" fill="#A497C9" transform="rotate(25 16.4 14.5)"/></svg>`,
+};
+const IK_KAT = {
+  'Pečení': '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15h16l-1.5 5h-13zM6 15c0-4 2.5-7 6-7s6 3 6 7" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/><circle cx="12" cy="6" r="1.4" fill="currentColor"/></svg>',
+  'Vaření': '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10h18M5 10v7a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-7M9 7c0-1 1-1.5 1-3M14 7c0-1 1-1.5 1-3" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  'Saláty': '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18a9 9 0 0 1-18 0zM12 12c0-4 2-6 5-7 0 3-2 6-5 7z" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg>',
+  'Zavařování': '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v3H7zM6 6h12v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2zM6 11h12" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg>',
+  'Ostatní': '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h11v6a5.5 5.5 0 0 1-11 0zM16 10h2a2 2 0 0 1 0 4h-2" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linejoin="round"/></svg>',
+};
+const BARVA_KAT = { 'Saláty': ['var(--salvej-sv)', 'var(--salvej)'], 'Zavařování': ['var(--salvej-sv)', 'var(--salvej)'], 'Ostatní': ['var(--ruze-sv)', 'var(--ruze)'] };
+
+// ---------- obrázky ----------
+function nactiObrazek(blob) {
+  return new Promise((ok, chyba) => {
+    const url = URL.createObjectURL(blob); const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); ok(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); chyba(new Error('Obrázek nejde načíst')); };
+    img.src = url;
+  });
+}
+async function zmensi(blob, max = 1600) {
+  const img = await nactiObrazek(blob);
+  const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.85));
+}
+async function otoc(blob) {
+  const img = await nactiObrazek(blob);
+  const c = document.createElement('canvas'); c.width = img.naturalHeight; c.height = img.naturalWidth;
+  const x = c.getContext('2d'); x.translate(c.width, 0); x.rotate(Math.PI / 2); x.drawImage(img, 0, 0);
+  return await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.88));
+}
+
+// ============================================================
+// Datová vrstva: Supabase, nebo ukázková data (?demo)
+// ============================================================
+function vytvorSupabaseApi() {
+  // Vlastní úložiště relace (obchází blokování localStorage, např. Avast AntiTrack)
+  const pamet = {};
+  const uloziste = {
+    getItem: (k) => { if (k in pamet) return pamet[k]; try { return localStorage.getItem(k); } catch (e) { return null; } },
+    setItem: (k, v) => { pamet[k] = v; setTimeout(() => { try { localStorage.setItem(k, v); } catch (e) { /* ignorovat */ } }, 0); },
+    removeItem: (k) => { delete pamet[k]; setTimeout(() => { try { localStorage.removeItem(k); } catch (e) { /* ignorovat */ } }, 0); },
+  };
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storage: uloziste, storageKey: 'kucharka-auth', persistSession: true, autoRefreshToken: true } });
+  const urlCache = new Map();
+  const ok = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
+  return {
+    async relace() { const { data } = await sb.auth.getSession(); return data.session; },
+    async prihlasit(email, heslo) { ok(await sb.auth.signInWithPassword({ email, password: heslo })); },
+    async odhlasit() { await sb.auth.signOut(); },
+    async clen() {
+      const s = await this.relace(); if (!s) return null;
+      const d = ok(await sb.from('clenove').select('jmeno, role').eq('user_id', s.user.id).maybeSingle());
+      return d ? { ...d, email: s.user.email } : { jmeno: null, role: null, email: s.user.email };
+    },
+    async nactiVse() {
+      const [kategorie, osoby, zdroje, recepty, stranky, fotky] = await Promise.all([
+        sb.from('kategorie').select('*').order('poradi'),
+        sb.from('osoby').select('*').order('jmeno'),
+        sb.from('zdroje').select('*').order('nazev'),
+        sb.from('recepty').select('id, nazev, kategorie_id, autor_id, zdroj_id, porce, stitky, stav, navrh, vytvoreno, upraveno').order('vytvoreno', { ascending: false }),
+        sb.from('stranky').select('recept_id, cesta, poradi').order('poradi'),
+        sb.from('fotky_pokrmu').select('recept_id, cesta, poradi').order('poradi'),
+      ].map((p) => p.then(ok)));
+      return { kategorie, osoby, zdroje, recepty, stranky, fotky };
+    },
+    async hledej(dotaz) { return ok(await sb.rpc('hledej_recepty', { dotaz })).map((r) => r.id); },
+    async detail(id) {
+      const [r, sur, str, fot] = await Promise.all([
+        sb.from('recepty').select('*').eq('id', id).single(),
+        sb.from('suroviny').select('*').eq('recept_id', id).order('poradi'),
+        sb.from('stranky').select('*').eq('recept_id', id).order('poradi'),
+        sb.from('fotky_pokrmu').select('*').eq('recept_id', id).order('poradi'),
+      ].map((p) => p.then(ok)));
+      return { ...r, suroviny: sur, stranky: str, fotky: fot };
+    },
+    async novyRecept(pole) { return ok(await sb.from('recepty').insert(pole).select('id').single()).id; },
+    async ulozRecept(id, pole, suroviny) {
+      if (suroviny) {
+        ok(await sb.from('suroviny').delete().eq('recept_id', id));
+        if (suroviny.length) ok(await sb.from('suroviny').insert(suroviny.map((s, i) => ({ ...s, recept_id: id, poradi: i }))));
+      }
+      ok(await sb.from('recepty').update(pole).eq('id', id));
+    },
+    async smazRecept(id) {
+      const d = await this.detail(id);
+      const s = d.stranky.map((x) => x.cesta); const f = d.fotky.map((x) => x.cesta);
+      ok(await sb.from('recepty').delete().eq('id', id));
+      if (s.length) await sb.storage.from('stranky').remove(s);
+      if (f.length) await sb.storage.from('pokrmy').remove(f);
+    },
+    async nahraj(bucket, receptId, blob) {
+      const cesta = `${receptId}/${noveId()}.jpg`;
+      ok(await sb.storage.from(bucket).upload(cesta, blob, { contentType: 'image/jpeg' }));
+      return cesta;
+    },
+    async prepisSoubor(bucket, cesta, blob) {
+      ok(await sb.storage.from(bucket).upload(cesta, blob, { contentType: 'image/jpeg', upsert: true }));
+      urlCache.delete(bucket + '/' + cesta);
+    },
+    async stahni(bucket, cesta) { return ok(await sb.storage.from(bucket).download(cesta)); },
+    async pridejStranku(receptId, blob, poradi) {
+      const cesta = await this.nahraj('stranky', receptId, blob);
+      return ok(await sb.from('stranky').insert({ recept_id: receptId, cesta, poradi }).select('*').single());
+    },
+    async smazStranku(s) { ok(await sb.from('stranky').delete().eq('id', s.id)); await sb.storage.from('stranky').remove([s.cesta]); },
+    async poradiStranek(seznam) { for (const [i, s] of seznam.entries()) ok(await sb.from('stranky').update({ poradi: i }).eq('id', s.id)); },
+    async pridejFotku(receptId, blob, poradi) {
+      const cesta = await this.nahraj('pokrmy', receptId, blob);
+      return ok(await sb.from('fotky_pokrmu').insert({ recept_id: receptId, cesta, poradi }).select('*').single());
+    },
+    async smazFotku(f) { ok(await sb.from('fotky_pokrmu').delete().eq('id', f.id)); await sb.storage.from('pokrmy').remove([f.cesta]); },
+    async novaOsoba(jmeno) { return ok(await sb.from('osoby').insert({ jmeno }).select('*').single()); },
+    async novyZdroj(nazev) { return ok(await sb.from('zdroje').insert({ nazev }).select('*').single()); },
+    async novaKategorie(nazev, rodic_id) { return ok(await sb.from('kategorie').insert({ nazev, rodic_id, poradi: 99 }).select('*').single()); },
+    async prepis(receptId) {
+      const s = await this.relace();
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/${FUNKCE}?akce=prepis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + s.access_token, apikey: SUPABASE_KEY },
+        body: JSON.stringify({ recept_id: receptId }),
+      });
+      const j = await r.json().catch(() => ({ chyba: 'Odpověď není JSON (HTTP ' + r.status + ')' }));
+      log('prepis', r.status, j);
+      if (!r.ok) throw new Error(j.chyba || ('HTTP ' + r.status));
+      return j;
+    },
+    async url(bucket, cesta) {
+      const k = bucket + '/' + cesta; const c = urlCache.get(k);
+      if (c && c.do > Date.now()) return c.url;
+      const { data, error } = await sb.storage.from(bucket).createSignedUrl(cesta, 3600);
+      if (error) { log('url', error); return null; }
+      urlCache.set(k, { url: data.signedUrl, do: Date.now() + 3300 * 1000 });
+      return data.signedUrl;
+    },
+  };
+}
+
+function vytvorDemoApi() {
+  let n = 0; const id = () => 'd' + (++n);
+  const kategorie = []; const kat = (nazev, rodic, poradi) => { const k = { id: id(), nazev, rodic_id: rodic, poradi }; kategorie.push(k); return k; };
+  const hl = {}; [['Pečení', ['Bábovky', 'Koláče', 'Buchty', 'Řezy', 'Cukroví', 'Dorty', 'Koblihy', 'Chléb a slané pečivo']], ['Vaření', ['Polévky', 'Masitá jídla', 'Bezmasá jídla', 'Přílohy', 'Omáčky']], ['Saláty', ['Zeleninové', 'Majonézové', 'Těstovinové']], ['Zavařování', ['Marmelády', 'Kompoty', 'Zelenina', 'Sirupy']], ['Ostatní', ['Nápoje', 'Pomazánky', 'Dezerty bez pečení']]]
+    .forEach(([h, subs], i) => { const k = kat(h, null, i + 1); hl[h] = { k, subs: {} }; subs.forEach((s, j) => { hl[h].subs[s] = kat(s, k.id, j + 1); }); });
+  const osoba = (jmeno) => ({ id: id(), jmeno });
+  const marie = osoba('Babička Marie'), maminka = osoba('Maminka'), vera = osoba('Teta Věra');
+  const osoby = [marie, maminka, vera];
+  const zdroje = [{ id: id(), nazev: 'Kuchařka s paprikami' }];
+  const recepty = []; const suroviny = []; const stranky = []; const fotky = []; const soubory = new Map();
+  const sur = (rid, skupina, list) => list.forEach(([mnozstvi, surovina, gramy]) => suroviny.push({ id: id(), recept_id: rid, skupina, poradi: suroviny.length, mnozstvi, surovina, gramy: gramy ?? null }));
+  const rec = (p) => { const r = { id: id(), stitky: [], postup: [], nejista: [], upozorneni: [], stav: 'hotovo', vytvoreno: new Date(Date.now() - recepty.length * 86400000).toISOString(), zdroj_id: zdroje[0].id, ...p }; recepty.push(r); return r; };
+  let r = rec({ nazev: 'Tvarohové řezy s kokosem', kategorie_id: hl['Pečení'].subs['Řezy'].id, autor_id: marie.id, porce: '1 plech', postup: ['Těsto je tuhé, musíme ho namačkat na plech vysypaný kokosem.', 'Navrch tvarohovou náplň.', 'Vrstva bílků s kokosem: ušleháme sníh, zamícháme cukr a lehce vmícháme kokos.'], upozorneni: ['Chybí teplota a doba pečení.'] });
+  sur(r.id, 'Těsto', [['50 dkg', 'hladké mouky', 500], ['15 dkg', 'cukru', 150], ['25 dkg', 'másla', 250], ['3', 'žloutky'], ['¾', 'prášku do pečiva'], ['⅓', 'skleničky mléka']]);
+  sur(r.id, 'Tvarohová náplň', [['50 dkg', 'tvarohu', 500], ['10 dkg', 'cukru', 100], ['1', 'vanilka'], ['2', 'žloutky'], ['trochu', 'mléka']]);
+  sur(r.id, 'Navrch', [['5', 'bílků'], ['10 dkg', 'cukru krystal', 100], ['10 dkg', 'kokosu', 100]]);
+  r = rec({ nazev: 'Nekynuté šátečky – koláčky', kategorie_id: hl['Pečení'].subs['Koláče'].id, autor_id: maminka.id, postup: ['Těsto propracovat rychle a dát na ½ hodiny do lednice.', 'Potom rozválet a nakrájet na malé čtverečky.', 'Koláčky pečeme těsně vedle sebe.', 'Ještě horké potřeme máslem s rumem a pocukrujeme.'], upozorneni: ['Chybí teplota a doba pečení.'], nejista: ['2 ks'] });
+  sur(r.id, 'Kvásek', [['30 g', 'droždí', 30], ['1 lžíce', 'cukru'], ['100 ml', 'vlažného mléka']]);
+  sur(r.id, 'Těsto', [['200 g', 'hladké mouky', 200], ['200 g', 'polohrubé mouky', 200], ['50 g', 'cukru krystal', 50], ['½ lžičky', 'soli'], ['3', 'žloutky'], ['250 g', 'hodně změklého másla', 250]]);
+  sur(r.id, 'Náplň tvarohová', [['2 ks', 'tvarohu'], ['1', 'žloutek'], ['', 'cukr'], ['2 lžíce', 'vanilkového pudinkového prášku']]);
+  r = rec({ nazev: 'Máslové rohlíčky z fary', kategorie_id: hl['Pečení'].subs['Cukroví'].id, autor_id: vera.id, stitky: ['Vánoce'], upozorneni: ['Recept obsahuje jen suroviny, postup chybí.'] });
+  sur(r.id, null, [['25 dkg', 'tuku (½ Hera, ½ Iva)', 250], ['25 dkg', 'hladké mouky', 250], ['2', 'žloutky'], ['2 lžíce', 'octa'], ['2 lžíce', 'mléka']]);
+  r = rec({ nazev: 'Směs na špagety nebo pod maso', kategorie_id: hl['Zavařování'].subs['Zelenina'].id, autor_id: maminka.id, postup: ['Cuketu, cibuli a papriku nakrájet na kostky.', 'Vše zamíchat a vařit 20 min.', 'Pak sterilizovat 20 min při teplotě 80 °C.'], poznamky: 'Kečup dát až nakonec!' });
+  sur(r.id, null, [['1 kg', 'cukety', 1000], ['1 kg', 'cibule', 1000], ['1 kg', 'papriky', 1000], ['1 kg', 'kečupu', 1000], ['2 lžíce', 'cukru'], ['1 lžička', 'soli'], ['¼ l', 'oleje'], ['6 lžic', 'sójové omáčky'], ['6 lžic', 'worcestrové omáčky']]);
+  r = rec({ nazev: 'Koblihy od Štěchů', stav: 'ke_kontrole', zdroj_id: zdroje[0].id, autor_id: null, postup: ['Utřít máslo, žloutky, cukr, přidat vzkynutý kvásek, mouku a rum.'], nejista: ['Štěchů'], upozorneni: ['Postup končí uprostřed – chybí kynutí, tvarování a smažení.'], navrh: { kategorie: 'Pečení', podkategorie: 'Koblihy', autor: 'Štěchovi', stitky: ['Masopust'] }, ai_model: 'claude-sonnet-5-5', ai_cena_kc: 0.31 });
+  sur(r.id, null, [['50 dkg', 'hladké mouky', 500], ['4', 'žloutky'], ['4 dkg', 'másla', 40], ['3 dkg', 'droždí', 30], ['2 lžíce', 'rumu'], ['¼ l', 'mléka'], ['5 dkg', 'cukru', 50], ['půl malé lžičky', 'soli']]);
+  const kopie = (o) => JSON.parse(JSON.stringify(o));
+  const cekej = (ms) => new Promise((ok) => setTimeout(ok, ms));
+  return {
+    async relace() { return lsGet('demo-prihlasen', true) ? { user: { email: 'demo@kucharka' } } : null; },
+    async prihlasit() { lsSet('demo-prihlasen', true); },
+    async odhlasit() { lsSet('demo-prihlasen', false); },
+    async clen() { return { jmeno: 'Vladan', role: 'spravce', email: 'demo@kucharka' }; },
+    async nactiVse() { return kopie({ kategorie, osoby, zdroje, recepty, stranky: stranky.map(({ recept_id, cesta, poradi }) => ({ recept_id, cesta, poradi })), fotky }); },
+    async hledej(q) {
+      const d = bezDiakritiky(q);
+      return recepty.filter((r) => bezDiakritiky([r.nazev, r.poznamky, ...(r.postup || []), ...(r.stitky || []), ...suroviny.filter((s) => s.recept_id === r.id).map((s) => s.surovina)].join(' ')).includes(d)).map((r) => r.id);
+    },
+    async detail(rid) {
+      const r = recepty.find((x) => x.id === rid);
+      return kopie({ ...r, suroviny: suroviny.filter((s) => s.recept_id === rid), stranky: stranky.filter((s) => s.recept_id === rid).sort((a, b) => a.poradi - b.poradi), fotky: fotky.filter((f) => f.recept_id === rid) });
+    },
+    async novyRecept(p) { const x = rec({ stav: 'ke_kontrole', ...p }); return x.id; },
+    async ulozRecept(rid, p, sur2) {
+      Object.assign(recepty.find((x) => x.id === rid), kopie(p));
+      if (sur2) { for (let i = suroviny.length - 1; i >= 0; i--) if (suroviny[i].recept_id === rid) suroviny.splice(i, 1); sur2.forEach((s, i) => suroviny.push({ id: id(), ...s, recept_id: rid, poradi: i })); }
+    },
+    async smazRecept(rid) { recepty.splice(recepty.findIndex((x) => x.id === rid), 1); },
+    async pridejStranku(rid, blob, poradi) { const cesta = rid + '/' + id() + '.jpg'; soubory.set('stranky/' + cesta, blob); const s = { id: id(), recept_id: rid, cesta, poradi }; stranky.push(s); return kopie(s); },
+    async smazStranku(s) { stranky.splice(stranky.findIndex((x) => x.id === s.id), 1); },
+    async poradiStranek(seznam) { seznam.forEach((s, i) => { stranky.find((x) => x.id === s.id).poradi = i; }); },
+    async stahni(b, c) { return soubory.get(b + '/' + c); },
+    async prepisSoubor(b, c, blob) { soubory.set(b + '/' + c, blob); },
+    async pridejFotku(rid, blob, poradi) { const cesta = rid + '/' + id() + '.jpg'; soubory.set('pokrmy/' + cesta, blob); const f = { id: id(), recept_id: rid, cesta, poradi }; fotky.push(f); return kopie(f); },
+    async smazFotku(f) { fotky.splice(fotky.findIndex((x) => x.id === f.id), 1); },
+    async novaOsoba(jmeno) { const o = osoba(jmeno); osoby.push(o); return kopie(o); },
+    async novyZdroj(nazev) { const z = { id: id(), nazev }; zdroje.push(z); return kopie(z); },
+    async novaKategorie(nazev, rodic_id) { return kopie(kat(nazev, rodic_id, 99)); },
+    async prepis() {
+      await cekej(1800);
+      return { model: 'claude-sonnet-5-5 (ukázka)', cena_kc: 0.31, recept: {
+        nazev: 'Koblihy od Štěchů', porce: null,
+        skupiny: [{ nazev: null, suroviny: [{ mnozstvi: '50 dkg', cislo: 50, jednotka: 'dkg', surovina: 'hladké mouky', gramy: 500 }, { mnozstvi: '4', cislo: 4, jednotka: null, surovina: 'žloutky', gramy: null }, { mnozstvi: '4 dkg', cislo: 4, jednotka: 'dkg', surovina: 'másla', gramy: 40 }, { mnozstvi: '3 dkg', cislo: 3, jednotka: 'dkg', surovina: 'droždí', gramy: 30 }, { mnozstvi: '2 lžíce', cislo: 2, jednotka: 'lžíce', surovina: 'rumu', gramy: null }, { mnozstvi: '¼ l', cislo: 0.25, jednotka: 'l', surovina: 'mléka', gramy: null }, { mnozstvi: '5 dkg', cislo: 5, jednotka: 'dkg', surovina: 'cukru', gramy: 50 }, { mnozstvi: 'půl malé lžičky', cislo: 0.5, jednotka: 'lžičky', surovina: 'soli', gramy: null }] }],
+        postup: ['Utřít máslo, žloutky, cukr, přidat vzkynutý kvásek, mouku a rum.'],
+        poznamky: null, nejista: ['Štěchů'], upozorneni: ['Postup končí uprostřed – chybí kynutí, tvarování a smažení.'],
+        navrh: { kategorie: 'Pečení', podkategorie: 'Koblihy', autor: 'Štěchovi', stitky: ['Masopust'] },
+      } };
+    },
+    async url(b, c) { const blob = soubory.get(b + '/' + c); if (!blob) return null; blob._url = blob._url || URL.createObjectURL(blob); return blob._url; },
+  };
+}
+
+const api = DEMO ? vytvorDemoApi() : vytvorSupabaseApi();
+
+// ============================================================
+// Stav appky
+// ============================================================
+const S = {
+  nacteno: false, prihlasen: false, clen: null, chybaPrihlaseni: '',
+  data: { kategorie: [], osoby: [], zdroje: [], recepty: [], stranky: [], fotky: [] },
+  obr: 'domu', zasobnik: [],
+  segment: 'kategorie', osoba: null, hledat: '', vysledky: null,
+  hlavniId: null, podId: null,
+  receptId: null, detail: null, pohled: 'prepis',
+  davka: lsGet('kucharka-davka', { autorId: '', zdrojId: '' }),
+  strankyRecept: null, k: null, prekryv: null, cekani: null,
+};
+
+function jdi(obr, param = {}) { S.zasobnik.push({ obr: S.obr, receptId: S.receptId, hlavniId: S.hlavniId, podId: S.podId }); Object.assign(S, param); S.obr = obr; render(); window.scrollTo(0, 0); }
+function zpet() { const p = S.zasobnik.pop() || { obr: 'domu' }; Object.assign(S, p); if (p.obr === 'detail' && S.receptId) otevriDetail(S.receptId, true); else render(); window.scrollTo(0, 0); }
+function domu() { S.zasobnik = []; S.obr = 'domu'; render(); window.scrollTo(0, 0); }
+
+const katPodle = (id) => S.data.kategorie.find((k) => k.id === id);
+const osobaPodle = (id) => S.data.osoby.find((o) => o.id === id);
+const hlavniKat = () => S.data.kategorie.filter((k) => !k.rodic_id).sort((a, b) => a.poradi - b.poradi);
+const podKat = (hid) => S.data.kategorie.filter((k) => k.rodic_id === hid).sort((a, b) => a.poradi - b.poradi || a.nazev.localeCompare(b.nazev, 'cs'));
+function hlavniProRecept(r) { const k = katPodle(r.kategorie_id); if (!k) return null; return k.rodic_id ? katPodle(k.rodic_id) : k; }
+const hotove = () => S.data.recepty.filter((r) => r.stav === 'hotovo' && (!S.osoba || r.autor_id === S.osoba));
+const keKontrole = () => S.data.recepty.filter((r) => r.stav === 'ke_kontrole');
+
+async function nactiData() {
+  S.data = await api.nactiVse();
+  log('data', S.data);
+}
+
+// ============================================================
+// Vykreslení
+// ============================================================
+function render() {
+  const app = document.getElementById('app');
+  let html = '';
+  if (!S.nacteno) html = '<div class="prazdne"><span class="ruka">Kuchařka</span>Načítám…</div>';
+  else if (!S.prihlasen) html = vLogin();
+  else if (S.clen && !S.clen.role) html = vNeniClen();
+  else html = ({ domu: vDomu, kategorie: vKategorie, detail: vDetail, pridat: vPridat, stranky: vStranky, kontrola: vKontrola, nastaveni: vNastaveni, nakup: vNakup }[S.obr] || vDomu)();
+  if (chyby.length) html += `<div class="chyby">${esc(chyby.join('\n'))}</div>`;
+  if (S.obr !== 'kontrola' || !S.prihlasen) html += `<div class="paticka">Kuchařka · verze ${VERZE}${DEMO ? ' · ukázková data' : ''}</div>`;
+  app.innerHTML = html;
+  vPrekryvy();
+  dosadObrazky();
+}
+
+async function dosadObrazky(koren = document) {
+  for (const img of koren.querySelectorAll('img[data-cesta]')) {
+    if (img.dataset.hotovo) continue; img.dataset.hotovo = '1';
+    api.url(img.dataset.bucket, img.dataset.cesta).then((u) => { if (u) img.src = u; else img.style.visibility = 'hidden'; });
+  }
+}
+const img = (bucket, cesta, extra = '') => `<img data-bucket="${bucket}" data-cesta="${esc(cesta)}" alt="" ${extra}>`;
+
+function vLogin() {
+  return `<div class="login">
+    <div style="display:flex;justify-content:center">${IK.vetvicka(56)}</div>
+    <h1 style="text-align:center;font-size:48px">Kuchařka</h1>
+    <div class="podtitul" style="text-align:center;margin-top:-8px">Rodinné recepty</div>
+    <form class="karta" data-form="login">
+      <div class="pole"><label for="email">E-mail</label><input id="email" type="email" autocomplete="username" required></div>
+      <div class="pole"><label for="heslo">Heslo</label><input id="heslo" type="password" autocomplete="current-password" required></div>
+    </form>
+    ${S.chybaPrihlaseni ? `<div class="chyby">${esc(S.chybaPrihlaseni)}</div>` : ''}
+    <button class="tlacitko" data-a="prihlasit">Přihlásit</button>
+  </div>`;
+}
+function vNeniClen() {
+  return `<div class="login"><h1>Kuchařka</h1><div class="prazdne">Účet <b>${esc(S.clen.email)}</b> zatím není v rodinné kuchařce.<br>Požádej správce, ať tě přidá.</div>
+  <button class="tlacitko druhe" data-a="odhlasit">Odhlásit</button></div>`;
+}
+
+function radekReceptu(r) {
+  const f = S.data.fotky.find((x) => x.recept_id === r.id);
+  const s = S.data.stranky.find((x) => x.recept_id === r.id);
+  const nahled = f ? img('pokrmy', f.cesta, 'class="nahled"') : s ? img('stranky', s.cesta, 'class="nahled"') : `<span class="nahled">${esc(r.nazev.charAt(0))}</span>`;
+  const k = katPodle(r.kategorie_id); const o = osobaPodle(r.autor_id);
+  const meta = [o?.jmeno, k?.nazev, r.stav === 'ke_kontrole' ? 'ke kontrole' : ''].filter(Boolean).join(' · ');
+  return `<button class="radek" data-a="otevrit" data-id="${r.id}" style="min-height:76px">${nahled}
+    <span class="hl"><span class="recept-nazev">${esc(r.nazev)}</span><span class="meta">${esc(meta || 'bez zařazení')}</span></span>${IK.sipka}</button>`;
+}
+
+function vDomu() {
+  const kk = keKontrole().length;
+  const osobyS = S.data.osoby.filter((o) => S.data.recepty.some((r) => r.autor_id === o.id && r.stav === 'hotovo'));
+  let telo = '';
+  if (S.hledat.trim()) {
+    const ids = S.vysledky || [];
+    const nal = S.data.recepty.filter((r) => ids.includes(r.id) && (!S.osoba || r.autor_id === S.osoba));
+    telo = `<div class="sekce"><div class="nadpis">Nalezeno · ${nal.length}</div>${nal.length ? `<div class="karta">${nal.map(radekReceptu).join('')}</div>` : '<div class="prazdne">Nic nenalezeno.</div>'}</div>`;
+  } else if (S.segment === 'kategorie') {
+    const rec = hotove();
+    telo = `<div class="sekce"><div class="nadpis">Kategorie</div><div class="karta">${hlavniKat().map((h) => {
+      const pocet = rec.filter((r) => hlavniProRecept(r)?.id === h.id).length;
+      const [bg, fg] = BARVA_KAT[h.nazev] || ['var(--akcent-sv)', 'var(--akcent)'];
+      return `<button class="radek" data-a="kategorie" data-id="${h.id}"><span class="dlazdice" style="background:${bg};color:${fg}">${IK_KAT[h.nazev] || IK_KAT['Ostatní']}</span>
+        <span class="hl"><span class="nazev">${esc(h.nazev)}</span></span><span class="pocet">${pocet}</span>${IK.sipka}</button>`;
+    }).join('')}</div></div>`;
+    const posledni = rec.slice(0, 4);
+    if (posledni.length) telo += `<div class="sekce"><div class="nadpis">Naposledy přidané</div><div class="mrizka2">${posledni.map((r) => {
+      const f = S.data.fotky.find((x) => x.recept_id === r.id); const s = S.data.stranky.find((x) => x.recept_id === r.id);
+      const o = osobaPodle(r.autor_id); const k = katPodle(r.kategorie_id);
+      const hlava = f ? img('pokrmy', f.cesta) : s ? img('stranky', s.cesta) : `<span style="width:100%;display:flex;justify-content:center">${IK.vetvicka(44)}</span>`;
+      return `<button class="karticka" data-a="otevrit" data-id="${r.id}"><span class="hlava">${hlava}</span>
+        <span class="telo"><span class="recept-nazev" style="font-size:19px">${esc(r.nazev)}</span><span class="meta" style="font-size:12px;color:var(--text2)">${esc([k?.nazev, o?.jmeno].filter(Boolean).join(' · '))}</span></span></button>`;
+    }).join('')}</div></div>`;
+    if (!S.data.recepty.length) telo += `<div class="prazdne"><span class="ruka">Zatím prázdno</span>Přidej první recept tlačítkem + vpravo nahoře.</div>`;
+  } else if (S.segment === 'vse') {
+    const rec = hotove().slice().sort((a, b) => a.nazev.localeCompare(b.nazev, 'cs'));
+    telo = rec.length ? `<div class="karta">${rec.map(radekReceptu).join('')}</div>` : '<div class="prazdne">Žádné recepty.</div>';
+  } else {
+    const rec = keKontrole();
+    telo = rec.length ? `<div class="sekce"><div class="nadpis">Čeká na přepis nebo kontrolu</div><div class="karta">${rec.map(radekReceptu).join('')}</div></div>` : '<div class="prazdne"><span class="ruka">Vše hotovo</span>Žádný recept nečeká na kontrolu.</div>';
+  }
+  return `
+  <div class="lista">
+    <div style="display:flex;align-items:center;gap:6px;color:var(--text2);font-size:15px">${IK.vetvicka()}<span>Rodinné recepty</span></div>
+    <div style="display:flex;gap:4px"><button class="ikonka" data-a="nastaveni" aria-label="Nastavení">${IK.ozubene}</button>
+    <button class="ikonka plne" data-a="pridat" aria-label="Přidat recept">${IK.plus}</button></div>
+  </div>
+  <h1>Kuchařka</h1>
+  <div class="hledat">${IK.lupa}<label for="hledat" class="skryty">Hledat recept</label><input id="hledat" type="search" placeholder="Hledat recept, surovinu…" value="${esc(S.hledat)}" autocomplete="off"></div>
+  ${S.hledat.trim() ? '' : `<div class="segment">
+    <button class="${S.segment === 'kategorie' ? 'vybrano' : ''}" data-a="segment" data-h="kategorie">Kategorie</button>
+    <button class="${S.segment === 'vse' ? 'vybrano' : ''}" data-a="segment" data-h="vse">Všechny</button>
+    <button class="${S.segment === 'kontrola' ? 'vybrano' : ''}" data-a="segment" data-h="kontrola">Ke kontrole${kk ? ' · ' + kk : ''}</button>
+  </div>`}
+  ${osobyS.length && S.segment !== 'kontrola' ? `<div class="stitky"><span style="font-size:13px;color:var(--text2);white-space:nowrap">Od koho:</span>
+    <button class="stitek ${!S.osoba ? 'vybrano' : ''}" data-a="osoba" data-id="">Všichni</button>
+    ${osobyS.map((o) => `<button class="stitek ${S.osoba === o.id ? 'vybrano' : ''}" data-a="osoba" data-id="${o.id}">${esc(o.jmeno)}</button>`).join('')}</div>` : ''}
+  ${telo}`;
+}
+
+function vKategorie() {
+  const h = katPodle(S.hlavniId); if (!h) return vDomu();
+  const vsech = hotove().filter((r) => hlavniProRecept(r)?.id === h.id);
+  const subs = podKat(h.id).map((p) => ({ p, n: vsech.filter((r) => r.kategorie_id === p.id).length })).filter((x) => x.n);
+  const rec = S.podId ? vsech.filter((r) => r.kategorie_id === S.podId) : vsech;
+  const o = osobaPodle(S.osoba);
+  return `
+  <div class="lista"><button class="odkaz" data-a="zpet">${IK.zpet} Kuchařka</button></div>
+  <div><h1>${esc(h.nazev)}</h1><div class="podtitul">${pocetRec(vsech.length)}</div></div>
+  ${subs.length ? `<div class="stitky"><button class="stitek ${!S.podId ? 'vybrano' : ''}" data-a="pod" data-id="">Vše</button>
+    ${subs.map(({ p, n }) => `<button class="stitek ${S.podId === p.id ? 'vybrano' : ''}" data-a="pod" data-id="${p.id}">${esc(p.nazev)} ${n}</button>`).join('')}</div>` : ''}
+  ${o ? `<div class="stitky"><span style="font-size:13px;color:var(--text2)">Filtr:</span><button class="stitek lev" data-a="osoba" data-id="">Od: ${esc(o.jmeno)} ${IK.krizek}</button></div>` : ''}
+  ${rec.length ? `<div class="karta">${rec.map(radekReceptu).join('')}</div>` : '<div class="prazdne">V této kategorii zatím nic není.</div>'}`;
+}
+
+async function otevriDetail(id, bezZasobniku) {
+  S.cekani = null;
+  const d = await api.detail(id);
+  if (d.stav === 'ke_kontrole') {
+    if (!bezZasobniku) S.zasobnik.push({ obr: S.obr, receptId: S.receptId, hlavniId: S.hlavniId, podId: S.podId });
+    S.receptId = id;
+    if (d.navrh || d.suroviny.length) { S.k = zKontroly(d); S.obr = 'kontrola'; }
+    else { S.strankyRecept = d; S.obr = 'stranky'; }
+    render(); window.scrollTo(0, 0); return;
+  }
+  S.detail = d; S.pohled = 'prepis';
+  if (bezZasobniku) { S.receptId = id; S.obr = 'detail'; render(); } else jdi('detail', { receptId: id });
+}
+
+function seskup(suroviny) {
+  const g = [];
+  for (const s of suroviny.slice().sort((a, b) => a.poradi - b.poradi)) {
+    const posl = g[g.length - 1];
+    if (posl && posl.nazev === (s.skupina || null)) posl.suroviny.push(s); else g.push({ nazev: s.skupina || null, suroviny: [s] });
+  }
+  return g;
+}
+
+function vDetail() {
+  const d = S.detail; if (!d) return '';
+  const k = katPodle(d.kategorie_id); const h = k?.rodic_id ? katPodle(k.rodic_id) : null; const o = osobaPodle(d.autor_id);
+  const f = d.fotky[0];
+  const stitky = [
+    k ? `<span class="stitek info lev">${esc(h ? h.nazev + ' › ' + k.nazev : k.nazev)}</span>` : '',
+    o ? `<span class="stitek info ruz">od: ${esc(o.jmeno)}</span>` : '',
+    d.porce ? `<span class="stitek info sal">${esc(d.porce)}</span>` : '',
+    ...(d.stitky || []).map((t) => `<span class="stitek info sal">${esc(t)}</span>`),
+  ].join('');
+  const telo = S.pohled === 'original'
+    ? (d.stranky.length ? d.stranky.map((s) => `<div class="karta" data-a="original" style="cursor:zoom-in">${img('stranky', s.cesta, 'style="width:100%;display:block"')}</div>`).join('') : '<div class="prazdne">Recept nemá vyfocené stránky.</div>')
+    : `${d.upozorneni?.length ? `<div class="varovani">${d.upozorneni.map((u) => `<div class="r">${IK.pozor}<span>${esc(u)}</span></div>`).join('')}</div>` : ''}
+      ${d.suroviny.length ? `<div class="sekce"><div class="nadpis">Suroviny</div><div class="karta">${seskup(d.suroviny).map((g) => `${g.nazev ? `<div class="skupina-nadpis">${esc(g.nazev)}</div>` : ''}${g.suroviny.map((s) => `<div class="surovina"><span class="mn">${esc(s.mnozstvi)}${s.gramy && !/^\s*[\d.,]+\s*g\s*$/.test(s.mnozstvi || '') ? `<span class="g">${esc(String(s.gramy).replace('.', ','))} g</span>` : ''}</span><span>${esc(s.surovina)}</span></div>`).join('')}`).join('')}</div></div>` : ''}
+      ${d.postup?.length ? `<div class="sekce"><div class="nadpis">Postup</div><div class="karta" style="padding:8px 14px">${d.postup.map((t, i) => `<div class="krok"><span class="c">${i + 1}</span><span class="t">${esc(t)}</span></div>`).join('')}</div></div>` : ''}
+      ${d.poznamky ? `<div class="papir"><div class="nad">POZNÁMKA Z KUCHAŘKY</div><div class="ruka">${esc(d.poznamky)}</div></div>` : ''}`;
+  return `
+  <div class="lista"><button class="odkaz" data-a="zpet">${IK.zpet} Zpět</button><button class="odkaz" data-a="upravit">Upravit</button></div>
+  <div style="display:flex;gap:12px;align-items:center">
+    <h1 class="mensi" style="flex:1;min-width:0">${esc(d.nazev)}</h1>
+    ${f ? `<button class="foto-pokrmu ma" data-a="fotky" aria-label="Fotky pokrmu">${img('pokrmy', f.cesta)}</button>`
+        : `<label class="foto-pokrmu" aria-label="Přidat fotku hotového pokrmu">${IK.fotoPlus}<span>Foto<br>pokrmu</span><input class="skryty" type="file" accept="image/*" data-vstup="fotka"></label>`}
+  </div>
+  ${stitky ? `<div class="stitky" style="flex-wrap:wrap">${stitky}</div>` : ''}
+  <div class="segment"><button class="${S.pohled === 'prepis' ? 'vybrano' : ''}" data-a="pohled" data-h="prepis">Přepis</button>
+    <button class="${S.pohled === 'original' ? 'vybrano' : ''}" data-a="pohled" data-h="original">Originál${d.stranky.length ? ' (' + d.stranky.length + ' str.)' : ''}</button></div>
+  ${telo}
+  ${d.suroviny.length ? `<button class="tlacitko" data-a="nakup" style="margin-top:4px"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.5l2.2 11h10.6L20 7H6.3M9.5 19.5a1 1 0 1 0 0 .1M16.5 19.5a1 1 0 1 0 0 .1" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg> Nákupní seznam</button>` : ''}
+  ${S.clen?.role === 'spravce' ? '<button class="tlacitko cervene" data-a="smazat">Smazat recept</button>' : ''}`;
+}
+
+function vPridat() {
+  const os = S.data.osoby; const zd = S.data.zdroje;
+  return `
+  <div class="lista"><button class="odkaz" data-a="zpet">Zrušit</button><span class="stred">Nový recept</span><span style="width:52px"></span></div>
+  <h1>Přidat recept</h1>
+  <div class="sekce"><div class="nadpis">Odkud</div><div class="karta">
+    <label class="radek" style="min-height:62px"><span class="dlazdice" style="width:38px;height:38px;background:var(--akcent);color:#fff">${IK.foto}</span>
+      <span class="hl"><span class="nazev" style="font-weight:600">Vyfotit stránku</span><span class="meta">další stránky přidáš v dalším kroku</span></span>${IK.sipka}
+      <input class="skryty" type="file" accept="image/*" capture="environment" data-vstup="novaStrana"></label>
+    <label class="radek" style="min-height:62px"><span class="dlazdice" style="width:38px;height:38px">${IK.galerie}</span>
+      <span class="hl"><span class="nazev">Vybrat z Fotek</span><span class="meta">i více stránek najednou</span></span>${IK.sipka}
+      <input class="skryty" type="file" accept="image/*" multiple data-vstup="novaStrana"></label>
+  </div></div>
+  <div class="sekce"><div class="nadpis">Výchozí pro celou dávku</div><div class="karta">
+    <div class="pole"><label for="davka-autor">Od koho</label><select id="davka-autor" data-davka="autorId">
+      <option value="">— navrhne AI —</option>${os.map((o) => `<option value="${o.id}" ${S.davka.autorId === o.id ? 'selected' : ''}>${esc(o.jmeno)}</option>`).join('')}<option value="+">+ Nová osoba…</option></select></div>
+    <div class="pole"><label for="davka-zdroj">Zdroj</label><select id="davka-zdroj" data-davka="zdrojId">
+      <option value="">— neuvedeno —</option>${zd.map((z) => `<option value="${z.id}" ${S.davka.zdrojId === z.id ? 'selected' : ''}>${esc(z.nazev)}</option>`).join('')}<option value="+">+ Nový zdroj…</option></select></div>
+  </div><div class="podtitul" style="padding:0 4px">Při focení celé kuchařky stačí nastavit jednou.</div></div>
+  <div class="papir" style="border-radius:14px"><div style="font-size:14px;line-height:1.4">Recept na víc stránkách vyfoť celý – stránky se spojí do jednoho receptu.</div></div>`;
+}
+
+function vStranky() {
+  const d = S.strankyRecept; if (!d) return '';
+  const st = d.stranky;
+  return `
+  <div class="lista"><button class="odkaz" data-a="zpet">${IK.zpet} Zpět</button><span class="stred">Nový recept</span><span style="width:60px"></span></div>
+  <div><h1>Stránky receptu</h1><div class="podtitul">${st.length === 1 ? '1 stránka' : st.length + (st.length >= 2 && st.length <= 4 ? ' stránky' : ' stránek')} · spojí se do jednoho receptu</div></div>
+  <div class="strany">
+    ${st.map((s, i) => `<div class="strana"><div class="obr" data-a="original" style="cursor:zoom-in">${img('stranky', s.cesta)}<span class="cislo">${i + 1}</span></div>
+      <div class="ovl"><button data-a="otocit" data-i="${i}" aria-label="Otočit stránku">${IK.otocit}</button>
+      <button data-a="posun" data-i="${i}" data-o="-1" aria-label="Posunout dopředu" ${i === 0 ? 'disabled' : ''}>${IK.vlevo}</button>
+      <button data-a="posun" data-i="${i}" data-o="1" aria-label="Posunout dozadu" ${i === st.length - 1 ? 'disabled' : ''}>${IK.vpravo}</button>
+      <button data-a="smazStranu" data-i="${i}" aria-label="Smazat stránku" style="color:var(--ruze)">${IK.kos}</button></div></div>`).join('')}
+    <label class="pridat-stranu"><span class="kruh">${IK.fotoPlus}</span><span style="font-weight:600">Další stránka</span><span style="font-size:12px;color:var(--text2)">vyfotit</span>
+      <input class="skryty" type="file" accept="image/*" capture="environment" data-vstup="dalsiStrana"></label>
+  </div>
+  <label class="tlacitko tiche" style="cursor:pointer">${IK.galerie} Přidat z Fotek<input class="skryty" type="file" accept="image/*" multiple data-vstup="dalsiStrana"></label>
+  <button class="tlacitko" data-a="prepsat" ${st.length ? '' : 'disabled'}>${IK.dokument} Přepsat recept</button>
+  <button class="tlacitko tiche" data-a="pozdeji">Uložit a přepsat později</button>
+  ${S.clen?.role === 'spravce' ? '<button class="tlacitko cervene" data-a="zahodit">Zahodit rozpracovaný recept</button>' : ''}`;
+}
+
+// ---------- Kontrola ----------
+function zKontroly(d) {
+  const n = d.navrh || {};
+  let hlavniId = null, podId = '', podNova = '';
+  const k = katPodle(d.kategorie_id);
+  if (k) { hlavniId = k.rodic_id || k.id; podId = k.rodic_id ? k.id : ''; }
+  else if (n.kategorie) {
+    const h = hlavniKat().find((x) => bezDiakritiky(x.nazev) === bezDiakritiky(n.kategorie)); hlavniId = h?.id || null;
+    if (h && n.podkategorie) { const p = podKat(h.id).find((x) => bezDiakritiky(x.nazev) === bezDiakritiky(n.podkategorie)); if (p) podId = p.id; else { podId = '+'; podNova = n.podkategorie; } }
+  }
+  let autorId = d.autor_id || '', autorNovy = '';
+  if (!autorId && n.autor) { const o = S.data.osoby.find((x) => bezDiakritiky(x.jmeno) === bezDiakritiky(n.autor)); if (o) autorId = o.id; else { autorId = '+'; autorNovy = n.autor; } }
+  const stitky = (d.stitky?.length ? d.stitky : (n.stitky || [])).join(', ');
+  const skupiny = seskup(d.suroviny).map((g) => ({ nazev: g.nazev || '', suroviny: g.suroviny.map((s) => ({ mnozstvi: s.mnozstvi || '', surovina: s.surovina || '', cislo: s.cislo ?? null, jednotka: s.jednotka ?? null, gramy: s.gramy ?? null })) }));
+  return {
+    id: d.id, nazev: d.nazev === 'Nový recept' ? '' : d.nazev, porce: d.porce || '', stitky,
+    hlavniId, podId, podNova, autorId, autorNovy, zdrojId: d.zdroj_id || '',
+    skupiny: skupiny.length ? skupiny : [{ nazev: '', suroviny: [{ mnozstvi: '', surovina: '' }] }],
+    postup: d.postup?.length ? d.postup.slice() : [''],
+    poznamky: d.poznamky || '', nejista: (d.nejista || []).slice(), upozorneni: (d.upozorneni || []).slice(),
+    stranky: d.stranky, ai_model: d.ai_model, ai_cena_kc: d.ai_cena_kc, novy: d.stav === 'ke_kontrole',
+  };
+}
+
+function vKontrola() {
+  const k = S.k; if (!k) return '';
+  const subs = k.hlavniId ? podKat(k.hlavniId) : [];
+  const nazevHtml = k.nejista.length ? `<div class="stitky" style="flex-wrap:wrap;padding:0 14px 10px"><span style="font-size:13px;color:var(--text2)">Zkontroluj:</span>${k.nejista.map((w, i) => `<button class="stitek" data-a="potvrdNejiste" data-i="${i}"><span class="nejiste">${esc(w)}</span> ✓</button>`).join('')}</div>` : '';
+  return `
+  <div class="lista"><button class="odkaz" data-a="zpet">Zrušit</button><span class="stred">${k.novy ? 'Kontrola přepisu' : 'Úprava receptu'}</span><button class="odkaz tucny" data-a="ulozit">Uložit</button></div>
+  ${k.stranky?.length ? `<div class="vyrez">${img('stranky', k.stranky[0].cesta)}<button data-a="original">Celý originál${k.stranky.length > 1 ? ' (' + k.stranky.length + ')' : ''}</button></div>` : ''}
+  <div class="karta">
+    <div class="pole"><label for="k-nazev">Název</label><input id="k-nazev" class="serif" data-k="nazev" value="${esc(k.nazev)}" placeholder="Název receptu"></div>
+    ${nazevHtml}
+  </div>
+  <div class="sekce"><div class="nadpis">Zařazení ${k.novy ? '· návrh AI' : ''}</div><div class="karta">
+    <div class="pole"><label for="k-hlavni">Kategorie</label><select id="k-hlavni" data-k="hlavniId"><option value="">— vyber —</option>${hlavniKat().map((h) => `<option value="${h.id}" ${k.hlavniId === h.id ? 'selected' : ''}>${esc(h.nazev)}</option>`).join('')}</select></div>
+    <div class="pole"><label for="k-pod">Podkategorie</label><select id="k-pod" data-k="podId" ${k.hlavniId ? '' : 'disabled'}><option value="">— žádná —</option>${subs.map((p) => `<option value="${p.id}" ${k.podId === p.id ? 'selected' : ''}>${esc(p.nazev)}</option>`).join('')}<option value="+" ${k.podId === '+' ? 'selected' : ''}>${k.podNova ? esc(k.podNova) + ' (nová)' : '+ Nová podkategorie…'}</option></select></div>
+    <div class="pole"><label for="k-autor">Od koho</label><select id="k-autor" data-k="autorId"><option value="">— neuvedeno —</option>${S.data.osoby.map((o) => `<option value="${o.id}" ${k.autorId === o.id ? 'selected' : ''}>${esc(o.jmeno)}</option>`).join('')}<option value="+" ${k.autorId === '+' ? 'selected' : ''}>${k.autorNovy ? esc(k.autorNovy) + ' (nová osoba)' : '+ Nová osoba…'}</option></select></div>
+    <div class="pole"><label for="k-zdroj">Zdroj</label><select id="k-zdroj" data-k="zdrojId"><option value="">— neuvedeno —</option>${S.data.zdroje.map((z) => `<option value="${z.id}" ${k.zdrojId === z.id ? 'selected' : ''}>${esc(z.nazev)}</option>`).join('')}</select></div>
+    <div class="pole"><label for="k-porce">Porce / množství</label><input id="k-porce" data-k="porce" value="${esc(k.porce)}" placeholder="např. 1 plech"></div>
+    <div class="pole"><label for="k-stitky">Štítky</label><input id="k-stitky" data-k="stitky" value="${esc(k.stitky)}" placeholder="Vánoce, rychlé…"></div>
+  </div></div>
+  <div class="sekce"><div class="nadpis">Suroviny · původní jednotky</div><div class="karta">
+    ${k.skupiny.map((g, gi) => `
+      <div class="edit-sur" style="grid-template-columns:minmax(0,1fr) 36px;background:var(--akcent-sv)"><input data-sk="${gi}" value="${esc(g.nazev)}" placeholder="Skupina (Těsto, Náplň…) – nepovinné" aria-label="Název skupiny" style="font-size:13px;font-weight:600;letter-spacing:.5px;color:var(--akcent-tm)">
+        <button class="mini" data-a="smazSkupinu" data-g="${gi}" aria-label="Smazat skupinu">${IK.krizek}</button></div>
+      ${g.suroviny.map((s, si) => `<div class="edit-sur"><input class="mn" data-sm="${gi}.${si}" value="${esc(s.mnozstvi)}" placeholder="množství" aria-label="Množství">
+        <input data-ss="${gi}.${si}" value="${esc(s.surovina)}" placeholder="surovina" aria-label="Surovina">
+        <button class="mini" data-a="smazSurovinu" data-g="${gi}" data-i="${si}" aria-label="Smazat surovinu">${IK.krizek}</button></div>`).join('')}
+      <button class="pridej" data-a="pridejSurovinu" data-g="${gi}">+ Surovina</button>`).join('')}
+    <button class="pridej" data-a="pridejSkupinu" style="border-top:1px solid var(--cara)">+ Skupina surovin</button>
+  </div></div>
+  <div class="sekce"><div class="nadpis">Postup</div><div class="karta">
+    ${k.postup.map((t, i) => `<div class="edit-krok"><span class="krok" style="padding:6px 0 0"><span class="c">${i + 1}</span></span>
+      <textarea data-kp="${i}" rows="2" aria-label="Krok ${i + 1}">${esc(t)}</textarea>
+      <button class="mini" data-a="smazKrok" data-i="${i}" aria-label="Smazat krok">${IK.krizek}</button></div>`).join('')}
+    <button class="pridej" data-a="pridejKrok">+ Krok</button>
+  </div></div>
+  <div class="papir"><div class="nad">POZNÁMKA Z KUCHAŘKY</div><label for="k-pozn" class="skryty">Poznámka</label>
+    <textarea id="k-pozn" data-k="poznamky" rows="2" style="width:100%;border:none;background:transparent;font-family:var(--ruka);font-size:22px;color:var(--akcent-tm);outline:none;resize:vertical">${esc(k.poznamky)}</textarea></div>
+  ${k.upozorneni.length ? `<div class="varovani">${k.upozorneni.map((u, i) => `<div class="r">${IK.pozor}<span style="flex:1">${esc(u)}</span><button class="mini" data-a="smazUpoz" data-i="${i}" aria-label="Skrýt upozornění" style="width:28px;height:28px">${IK.krizek}</button></div>`).join('')}
+    <div style="display:flex;gap:8px"><button class="tlacitko" data-a="pridatStranu" style="min-height:38px;font-size:14px;border-radius:10px">Přidat stránku</button></div></div>` : ''}
+  <button class="tlacitko" data-a="ulozit">Uložit recept</button>
+  <div class="paticka-recept"><span>${k.nejista.length ? k.nejista.length + ' nejist' + (k.nejista.length === 1 ? 'é slovo' : 'á slova') : ''}</span><span>${k.ai_model ? 'Přepsal ' + esc(k.ai_model) + (k.ai_cena_kc != null ? ' · ' + String(k.ai_cena_kc).replace('.', ',') + ' Kč' : '') : ''}</span></div>
+  ${k.stranky?.length ? '<button class="tlacitko tiche" data-a="prepsatZnovu">Přepsat znovu z fotek</button>' : ''}`;
+}
+
+function vNastaveni() {
+  return `
+  <div class="lista"><button class="odkaz" data-a="zpet">${IK.zpet} Kuchařka</button></div>
+  <h1>Nastavení</h1>
+  <div class="karta">
+    <div class="pole"><span class="popis">Přihlášen jako</span><span>${esc(S.clen?.jmeno || '')} · ${esc(S.clen?.email || '')}</span></div>
+    <div class="pole"><span class="popis">Role</span><span>${S.clen?.role === 'spravce' ? 'správce' : 'člen rodiny'}</span></div>
+    <div class="pole"><span class="popis">Verze</span><span>${VERZE}${DEMO ? ' (ukázková data)' : ''}</span></div>
+  </div>
+  <div class="sekce"><div class="nadpis">Osoby (od koho jsou recepty)</div><div class="karta">
+    ${S.data.osoby.map((o) => `<div class="radek" style="cursor:default"><span class="hl"><span class="nazev">${esc(o.jmeno)}</span></span><span class="pocet">${S.data.recepty.filter((r) => r.autor_id === o.id).length}</span></div>`).join('') || '<div class="prazdne">Zatím žádné.</div>'}
+  </div></div>
+  <button class="tlacitko druhe" data-a="odhlasit">Odhlásit</button>`;
+}
+
+function vPrekryvy() {
+  document.querySelectorAll('.prekryv, .cekani').forEach((e) => e.remove());
+  if (S.cekani) {
+    const d = document.createElement('div'); d.className = 'cekani';
+    d.innerHTML = `<div class="vetvicka">${IK.vetvicka(64)}</div><div class="ruka">${esc(S.cekani.nadpis)}</div><div class="p">${esc(S.cekani.text || '')}</div>`;
+    document.body.appendChild(d);
+  }
+  if (S.prekryv) {
+    const p = S.prekryv; const d = document.createElement('div'); d.className = 'prekryv';
+    const polozky = p.polozky.map((x, i) => `<div style="width:100%;display:flex;flex-direction:column;align-items:center;gap:6px">${img(p.bucket, x.cesta, 'data-a="zoom"')}
+      ${p.mazani ? `<button data-a="smazFotku" data-i="${i}" style="color:#FF9A8A;background:none;border:none;min-height:40px;cursor:pointer">Smazat fotku</button>` : ''}</div>`).join('');
+    d.innerHTML = `<div class="hora"><span>${esc(p.nadpis)}</span><button data-a="zavritPrekryv">Hotovo</button></div>
+      <div class="obsah">${polozky}${p.pridat ? `<label style="color:#fff;min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 0 24px">${IK.fotoPlus} Přidat další fotku<input class="skryty" type="file" accept="image/*" data-vstup="fotka"></label>` : ''}</div>`;
+    document.body.appendChild(d); dosadObrazky(d);
+  }
+}
+
+// ---------- Nákupní seznam ----------
+const ODDELENI = [
+  ['Mléčné a vejce', /(vejc|vajec|zloutk|bilk|masl|mlek|mlik|tvaroh|smetan|jogurt|syr|kefir|podmasl)/],
+  ['Mouka a pečení', /(mouk|cukr|prasek|prasku|drozd|kvasnic|vanil|kakao|kokos|mak|orech|mandl|pudink|skorice|rozink|zelatin|perni|citronov[aá] kura)/],
+  ['Ovoce a zelenina', /(cibul|cesnek|cuket|paprik|mrkev|mrkv|brambor|jabl|citron|hrusk|svestk|merunk|jahod|rajc|okurk|zeli|petrzel|celer|houb|kopr|patizon|dyn)/],
+  ['Maso a uzeniny', /(maso|masa|kure|vepr|hoveze|slanin|klobas|sunk|parek|mlet)/],
+];
+function zakladSuroviny(nazev) {
+  const n = bezDiakritiky(nazev).trim();
+  if (/(zloutk|zloutek|bilk|bilek|vejc|vajec|vejce)/.test(n)) return { klic: 'vejce', nazev: 'Vejce' };
+  if (/^(cukr|cukru)\b/.test(n)) return { klic: 'cukr', nazev: 'Cukr' };
+  if (/^(masla|maslo)\b/.test(n)) return { klic: 'maslo', nazev: 'Máslo' };
+  if (/\bml[ei]k[ao]?\b/.test(n)) return { klic: 'mleko', nazev: 'Mléko' };
+  if (/mouk/.test(n)) { const d = /polohrub/.test(n) ? 'Polohrubá mouka' : /hrub/.test(n) ? 'Hrubá mouka' : /hladk/.test(n) ? 'Hladká mouka' : /celozrn/.test(n) ? 'Celozrnná mouka' : 'Mouka'; return { klic: bezDiakritiky(d), nazev: d }; }
+  if (/(prasek|prasku) do peciva/.test(n)) return { klic: 'prasek', nazev: 'Prášek do pečiva' };
+  if (/^vanilk/.test(n)) return { klic: 'vanilka', nazev: 'Vanilkový cukr' };
+  if (/^(soli|sul)\b/.test(n)) return { klic: 'sul', nazev: 'Sůl' };
+  if (/^(tvarohu|tvaroh)\b/.test(n)) return { klic: 'tvaroh', nazev: 'Tvaroh' };
+  if (/^(kokosu|kokos)\b/.test(n)) return { klic: 'kokos', nazev: 'Kokos' };
+  if (/^(drozdi)\b/.test(n)) return { klic: 'drozdi', nazev: 'Droždí' };
+  const hezky = nazev.trim().charAt(0).toUpperCase() + nazev.trim().slice(1);
+  return { klic: n, nazev: hezky };
+}
+function cisloZ(m) {
+  const t = String(m || '').replace(',', '.').trim();
+  const zl = { '¼': .25, '½': .5, '¾': .75, '⅓': 1 / 3, '⅔': 2 / 3 };
+  let x = t.match(/^(\d+(?:\.\d+)?)?\s*([¼½¾⅓⅔])?/);
+  if (!x || (!x[1] && !x[2])) return null;
+  return (x[1] ? parseFloat(x[1]) : 0) + (x[2] ? zl[x[2]] : 0);
+}
+function sestavNakup(suroviny) {
+  const mapa = new Map(); let zl = 0, bi = 0, vc = 0, vejceZdroj = [];
+  for (const s0 of suroviny) {
+    // „⅓ skleničky mléka“ → množství „⅓ skleničky“, surovina „mléka“
+    const s = { ...s0 };
+    const mira = String(s.surovina || '').match(/^(skleni\S*|hrnk\S*|hrnek|lž[ií]c\S*|lžičk\S*|sáčk\S*|sáček|balíč\S*|špetk\S*|kousk\S*|kousek)\s+(.+)$/i);
+    if (mira) { s.mnozstvi = ((s.mnozstvi || '') + ' ' + mira[1]).trim(); s.surovina = mira[2]; }
+    const z = zakladSuroviny(s.surovina);
+    if (z.klic === 'vejce') {
+      const n = cisloZ(s.mnozstvi) ?? 1; const t = bezDiakritiky(s.surovina);
+      if (/zlout/.test(t)) zl += n; else if (/bil/.test(t)) bi += n; else vc += n;
+      vejceZdroj.push((s.mnozstvi ? s.mnozstvi + ' ' : '') + s.surovina);
+      continue;
+    }
+    const p = mapa.get(z.klic) || { nazev: z.nazev, gramy: 0, maGramy: true, kusy: [], puvod: [] };
+    if (s.gramy) p.gramy += Number(s.gramy); else { p.maGramy = p.maGramy && false; p.kusy.push(s.mnozstvi || ''); }
+    p.puvod.push((s.mnozstvi ? s.mnozstvi + ' ' : '') + s.surovina);
+    mapa.set(z.klic, p);
+  }
+  const vysl = [];
+  if (zl || bi || vc) vysl.push({ klic: 'vejce', nazev: 'Vejce', vejce: vc + Math.max(zl, bi), pozn: vejceZdroj.length > 1 ? vejceZdroj.join(' + ') : '' });
+  for (const [klic, p] of mapa) vysl.push({ klic, nazev: p.nazev, gramy: p.gramy || null, kusy: p.kusy.filter(Boolean), pozn: p.puvod.length > 1 ? p.puvod.join(' + ') : '' });
+  return vysl;
+}
+function mnozstviNakup(x, nas) {
+  const fr = (v) => {
+    const c = Math.floor(v + 1e-6); const r = v - c;
+    const zl = Math.abs(r - 1 / 3) < 0.02 ? '⅓' : Math.abs(r - 2 / 3) < 0.02 ? '⅔' : ({ 0.25: '¼', 0.5: '½', 0.75: '¾' }[Math.round(r * 4) / 4] || '');
+    if (r > 0.02 && !zl) return String(Math.round(v * 100) / 100).replace('.', ',');
+    return ((c ? String(c) : '') + zl) || '0';
+  };
+  if (x.vejce) return fr(x.vejce * nas) + ' ks';
+  const casti = [];
+  if (x.gramy) { const g = x.gramy * nas; casti.push(g >= 1000 ? String(Math.round(g / 10) / 100).replace('.', ',') + ' kg' : Math.round(g) + ' g'); }
+  for (const k of x.kusy) { const c = cisloZ(k); casti.push(c != null && nas > 1 ? k.replace(/^\s*[\d.,]*\s*[¼½¾⅓⅔]?/, fr(c * nas)) : (nas > 1 ? k + ' ×' + nas : k)); }
+  return casti.join(' + ');
+}
+function vNakup() {
+  const d = S.detail; if (!d) return '';
+  const nas = S.nakupNasobek || 1; const mam = S.nakupMam || {};
+  const pol = sestavNakup(d.suroviny);
+  const skupiny = new Map(); for (const [n] of ODDELENI) skupiny.set(n, []); skupiny.set('Ostatní', []);
+  for (const x of pol) { const t = bezDiakritiky(x.nazev); const o = ODDELENI.find(([, re]) => re.test(t)); skupiny.get(o ? o[0] : 'Ostatní').push(x); }
+  const zbyva = pol.filter((x) => !mam[x.klic]).length;
+  return `
+  <div class="lista"><button class="odkaz" data-a="zpet">${IK.zpet} Recept</button><span class="stred">Nákupní seznam</span><span style="width:70px"></span></div>
+  <div><h1 class="mensi">${esc(d.nazev)}</h1><div class="podtitul">Klepnutím odškrtni, co máš doma.</div></div>
+  <div class="karta" style="display:flex;align-items:center;justify-content:space-between;padding:6px 6px 6px 14px">
+    <span>Množství: <b>${nas}×</b> recept${d.porce ? ` <span style="color:var(--text2)">(${esc(d.porce)})</span>` : ''}</span>
+    <span class="krokovac"><button data-a="nasobek" data-o="-1" aria-label="Méně">−</button><button data-a="nasobek" data-o="1" aria-label="Více">+</button></span>
+  </div>
+  ${[...skupiny].filter(([, l]) => l.length).map(([n, l]) => `<div class="sekce"><div class="nadpis">${esc(n)}</div><div class="karta">
+    ${l.map((x) => `<button class="nakup-radek ${mam[x.klic] ? 'mam' : ''}" data-a="mam" data-k="${esc(x.klic)}" aria-pressed="${!!mam[x.klic]}">
+      ${mam[x.klic] ? '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" style="flex-shrink:0"><circle cx="11" cy="11" r="10" fill="var(--text3)"/><path d="M6.5 11.5l3 3 6-6.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" style="flex-shrink:0"><circle cx="11" cy="11" r="9.5" stroke="var(--akcent)" stroke-width="1.6" fill="none"/></svg>'}
+      <span class="hl"><span class="nazev">${esc(x.nazev)}</span>${x.pozn ? `<span style="font-size:12px;color:var(--text2)">${esc(x.pozn)}</span>` : ''}</span>
+      <span class="mn">${esc(mnozstviNakup(x, nas))}</span></button>`).join('')}</div></div>`).join('')}
+  <button class="tlacitko" data-a="poslatNakup" ${zbyva ? '' : 'disabled'}><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M6 11H4v10h16V11h-2" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg> Poslat seznam · ${zbyva} ${zbyva === 1 ? 'položka' : zbyva >= 2 && zbyva <= 4 ? 'položky' : 'položek'}</button>
+  <button class="tlacitko tiche" data-a="kopirovatNakup">Kopírovat seznam</button>`;
+}
+function textNakupu() {
+  const d = S.detail; const nas = S.nakupNasobek || 1; const mam = S.nakupMam || {};
+  const radky = sestavNakup(d.suroviny).filter((x) => !mam[x.klic]).map((x) => '☐ ' + x.nazev + (mnozstviNakup(x, nas) ? ' – ' + mnozstviNakup(x, nas) : ''));
+  return 'Nákup: ' + d.nazev + (nas > 1 ? ' (' + nas + '×)' : '') + '\n' + radky.join('\n');
+}
+
+// ============================================================
+// Akce
+// ============================================================
+let hledatCas;
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.id === 'hledat') {
+    S.hledat = t.value; clearTimeout(hledatCas);
+    hledatCas = setTimeout(async () => {
+      S.vysledky = S.hledat.trim() ? await api.hledej(S.hledat.trim()) : null;
+      const pos = t.selectionStart; render(); const n = document.getElementById('hledat'); if (n) { n.focus(); n.setSelectionRange(pos, pos); }
+    }, 250);
+    return;
+  }
+  const k = S.k; if (!k) return;
+  if (t.dataset.k && t.tagName !== 'SELECT') k[t.dataset.k] = t.value;
+  else if (t.dataset.sk != null) k.skupiny[+t.dataset.sk].nazev = t.value;
+  else if (t.dataset.sm) { const [g, i] = t.dataset.sm.split('.').map(Number); const s = k.skupiny[g].suroviny[i]; s.mnozstvi = t.value; s.cislo = null; s.jednotka = null; s.gramy = prepoctiGramy(t.value); }
+  else if (t.dataset.ss) { const [g, i] = t.dataset.ss.split('.').map(Number); k.skupiny[g].suroviny[i].surovina = t.value; }
+  else if (t.dataset.kp != null) k.postup[+t.dataset.kp] = t.value;
+});
+
+function prepoctiGramy(m) {
+  const x = String(m).replace(',', '.').match(/^\s*([\d.]+)\s*(dkg|kg|g)\b/i);
+  if (!x) return null; const n = parseFloat(x[1]); const u = x[2].toLowerCase();
+  return u === 'dkg' ? n * 10 : u === 'kg' ? n * 1000 : n;
+}
+
+document.addEventListener('change', async (e) => {
+  const t = e.target;
+  try {
+    if (t.dataset.davka) {
+      let v = t.value;
+      if (v === '+') {
+        const jm = prompt(t.dataset.davka === 'autorId' ? 'Jméno osoby (např. Babička Marie):' : 'Název zdroje (např. Kuchařka s paprikami):');
+        if (!jm?.trim()) { render(); return; }
+        const n = t.dataset.davka === 'autorId' ? await api.novaOsoba(jm.trim()) : await api.novyZdroj(jm.trim());
+        await nactiData(); v = n.id;
+      }
+      S.davka[t.dataset.davka] = v; lsSet('kucharka-davka', S.davka); render(); return;
+    }
+    if (t.dataset.k && t.tagName === 'SELECT' && S.k) {
+      const k = S.k; const pole = t.dataset.k;
+      if (pole === 'hlavniId') { k.hlavniId = t.value || null; k.podId = ''; k.podNova = ''; render(); return; }
+      if (pole === 'podId' && t.value === '+') { const n = prompt('Název nové podkategorie:', k.podNova || ''); if (n?.trim()) { k.podId = '+'; k.podNova = n.trim(); } render(); return; }
+      if (pole === 'autorId' && t.value === '+') { const n = prompt('Jméno osoby:', k.autorNovy || ''); if (n?.trim()) { k.autorId = '+'; k.autorNovy = n.trim(); } render(); return; }
+      k[pole] = t.value; return;
+    }
+    if (t.dataset.vstup && t.files?.length) {
+      const soubory = [...t.files]; t.value = '';
+      if (t.dataset.vstup === 'novaStrana') await novyReceptZFotek(soubory);
+      else if (t.dataset.vstup === 'dalsiStrana') await pridejStrany(soubory);
+      else if (t.dataset.vstup === 'fotka') await pridejFotkuPokrmu(soubory[0]);
+    }
+  } catch (err) { S.cekani = null; zapisChybu(err.message || err); toast('Chyba: ' + (err.message || err)); }
+});
+
+async function novyReceptZFotek(soubory) {
+  S.cekani = { nadpis: 'Nahrávám stránky…' }; vPrekryvy();
+  const autor = S.davka.autorId && S.davka.autorId !== '+' ? S.davka.autorId : null;
+  const zdroj = S.davka.zdrojId && S.davka.zdrojId !== '+' ? S.davka.zdrojId : null;
+  const id = await api.novyRecept({ nazev: 'Nový recept', autor_id: autor, zdroj_id: zdroj, stav: 'ke_kontrole' });
+  for (const [i, f] of soubory.entries()) await api.pridejStranku(id, await zmensi(f), i);
+  await nactiData();
+  S.strankyRecept = await api.detail(id); S.receptId = id; S.cekani = null;
+  S.zasobnik = [{ obr: 'domu' }]; S.obr = 'stranky'; render(); window.scrollTo(0, 0);
+}
+async function pridejStrany(soubory) {
+  const d = S.strankyRecept || (S.k && { id: S.k.id, stranky: S.k.stranky }); if (!d) return;
+  S.cekani = { nadpis: 'Nahrávám…' }; vPrekryvy();
+  let p = d.stranky.length;
+  for (const f of soubory) await api.pridejStranku(d.id, await zmensi(f), p++);
+  S.strankyRecept = await api.detail(d.id); S.cekani = null; await nactiData(); S.obr = 'stranky'; render();
+}
+async function pridejFotkuPokrmu(f) {
+  const d = S.detail; if (!d) return;
+  S.cekani = { nadpis: 'Nahrávám fotku…' }; vPrekryvy();
+  await api.pridejFotku(d.id, await zmensi(f, 1400), d.fotky.length);
+  S.detail = await api.detail(d.id); await nactiData(); S.cekani = null;
+  if (S.prekryv) S.prekryv.polozky = S.detail.fotky;
+  render(); toast('Fotka pokrmu přidána');
+}
+
+async function prepsat(id) {
+  S.cekani = { nadpis: 'Čtu rukopis…', text: 'Obvykle to trvá 10–40 sekund.' }; vPrekryvy();
+  try {
+    const v = await api.prepis(id); const r = v.recept;
+    const suroviny = [];
+    for (const g of r.skupiny || []) for (const s of g.suroviny || []) suroviny.push({ skupina: g.nazev || null, mnozstvi: s.mnozstvi, cislo: s.cislo, jednotka: s.jednotka, surovina: s.surovina, gramy: s.gramy });
+    await api.ulozRecept(id, { nazev: r.nazev || 'Nový recept', porce: r.porce, postup: r.postup || [], poznamky: r.poznamky, nejista: r.nejista || [], upozorneni: r.upozorneni || [], stitky: r.navrh?.stitky || [], navrh: r.navrh, ai_model: v.model, ai_cena_kc: v.cena_kc }, suroviny);
+    await nactiData();
+    const d = await api.detail(id);
+    S.k = zKontroly(d); S.k.novy = true; S.cekani = null; S.obr = 'kontrola'; render(); window.scrollTo(0, 0);
+  } catch (e) {
+    S.cekani = null; render(); zapisChybu('Přepis: ' + (e.message || e)); toast('Přepis se nepovedl – recept zůstal ve frontě Ke kontrole');
+  }
+}
+
+async function ulozitKontrolu() {
+  const k = S.k;
+  if (!k.nazev.trim()) { toast('Doplň název receptu'); document.getElementById('k-nazev')?.focus(); return; }
+  S.cekani = { nadpis: 'Ukládám…' }; vPrekryvy();
+  try {
+    let katId = null;
+    if (k.hlavniId) {
+      katId = k.hlavniId;
+      if (k.podId === '+' && k.podNova) katId = (podKat(k.hlavniId).find((p) => bezDiakritiky(p.nazev) === bezDiakritiky(k.podNova)) || await api.novaKategorie(k.podNova, k.hlavniId)).id;
+      else if (k.podId) katId = k.podId;
+    }
+    let autorId = k.autorId || null;
+    if (autorId === '+') autorId = k.autorNovy ? (S.data.osoby.find((o) => bezDiakritiky(o.jmeno) === bezDiakritiky(k.autorNovy)) || await api.novaOsoba(k.autorNovy)).id : null;
+    const suroviny = [];
+    for (const g of k.skupiny) for (const s of g.suroviny) if (s.surovina.trim() || s.mnozstvi.trim()) suroviny.push({ skupina: g.nazev.trim() || null, mnozstvi: s.mnozstvi.trim(), cislo: s.cislo ?? null, jednotka: s.jednotka ?? null, surovina: s.surovina.trim() || '?', gramy: s.gramy ?? prepoctiGramy(s.mnozstvi) });
+    await api.ulozRecept(k.id, {
+      nazev: k.nazev.trim(), porce: k.porce.trim() || null, kategorie_id: katId, autor_id: autorId, zdroj_id: k.zdrojId || null,
+      stitky: k.stitky.split(',').map((x) => x.trim()).filter(Boolean), postup: k.postup.map((x) => x.trim()).filter(Boolean),
+      poznamky: k.poznamky.trim() || null, nejista: k.nejista, upozorneni: k.upozorneni, stav: 'hotovo',
+    }, suroviny);
+    await nactiData();
+    S.k = null; S.cekani = null; S.zasobnik = [{ obr: 'domu' }];
+    await otevriDetail(k.id, true); toast('Recept uložen');
+  } catch (e) { S.cekani = null; render(); zapisChybu(e.message || e); toast('Uložení se nepovedlo'); }
+}
+
+document.addEventListener('submit', (e) => { e.preventDefault(); document.querySelector('[data-a="prihlasit"]')?.click(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'heslo') { e.preventDefault(); document.querySelector('[data-a="prihlasit"]')?.click(); } });
+
+document.addEventListener('click', async (e) => {
+  const el = e.target.closest('[data-a]'); if (!el) return;
+  const a = el.dataset.a; const k = S.k;
+  try {
+    switch (a) {
+      case 'prihlasit': {
+        S.chybaPrihlaseni = '';
+        try { await api.prihlasit(document.getElementById('email').value.trim(), document.getElementById('heslo').value); await start(); }
+        catch (err) { S.chybaPrihlaseni = err.message === 'Invalid login credentials' ? 'Nesprávný e-mail nebo heslo.' : err.message; render(); }
+        break;
+      }
+      case 'odhlasit': await api.odhlasit(); S.prihlasen = false; S.clen = null; domu(); break;
+      case 'zpet': S.k = null; zpet(); break;
+      case 'nastaveni': jdi('nastaveni'); break;
+      case 'pridat': jdi('pridat'); break;
+      case 'segment': S.segment = el.dataset.h; render(); break;
+      case 'osoba': S.osoba = el.dataset.id || null; render(); break;
+      case 'kategorie': jdi('kategorie', { hlavniId: el.dataset.id, podId: null }); break;
+      case 'pod': S.podId = el.dataset.id || null; render(); break;
+      case 'otevrit': await otevriDetail(el.dataset.id); break;
+      case 'pohled': S.pohled = el.dataset.h; render(); break;
+      case 'upravit': S.k = zKontroly(S.detail); S.k.novy = false; jdi('kontrola'); break;
+      case 'smazat':
+        if (el.dataset.potvrzeno) { await api.smazRecept(S.detail.id); await nactiData(); domu(); toast('Recept smazán'); }
+        else { el.dataset.potvrzeno = '1'; el.textContent = 'Opravdu smazat? Klepni znovu'; }
+        break;
+      case 'zahodit':
+        if (el.dataset.potvrzeno) { await api.smazRecept(S.strankyRecept.id); await nactiData(); domu(); toast('Zahozeno'); }
+        else { el.dataset.potvrzeno = '1'; el.textContent = 'Opravdu zahodit? Klepni znovu'; }
+        break;
+      case 'fotky': S.prekryv = { nadpis: 'Fotky pokrmu', bucket: 'pokrmy', polozky: S.detail.fotky, pridat: true, mazani: true }; vPrekryvy(); break;
+      case 'original': {
+        const st = S.obr === 'kontrola' ? k.stranky : S.obr === 'stranky' ? S.strankyRecept.stranky : S.detail.stranky;
+        S.prekryv = { nadpis: 'Originál · klepnutím přiblížíš', bucket: 'stranky', polozky: st }; vPrekryvy(); break;
+      }
+      case 'zoom': el.classList.toggle('zoom'); break;
+      case 'zavritPrekryv': S.prekryv = null; vPrekryvy(); break;
+      case 'smazFotku':
+        if (el.dataset.potvrzeno) { await api.smazFotku(S.prekryv.polozky[+el.dataset.i]); S.detail = await api.detail(S.detail.id); await nactiData(); S.prekryv.polozky = S.detail.fotky; if (!S.detail.fotky.length) S.prekryv = null; render(); }
+        else { el.dataset.potvrzeno = '1'; el.textContent = 'Opravdu smazat? Klepni znovu'; }
+        break;
+      case 'otocit': {
+        const s = S.strankyRecept.stranky[+el.dataset.i];
+        S.cekani = { nadpis: 'Otáčím…' }; vPrekryvy();
+        const blob = await api.stahni('stranky', s.cesta); await api.prepisSoubor('stranky', s.cesta, await otoc(blob));
+        S.cekani = null; render(); break;
+      }
+      case 'posun': {
+        const st = S.strankyRecept.stranky; const i = +el.dataset.i; const j = i + +el.dataset.o;
+        [st[i], st[j]] = [st[j], st[i]]; await api.poradiStranek(st); render(); break;
+      }
+      case 'smazStranu': {
+        const st = S.strankyRecept.stranky; const s = st[+el.dataset.i];
+        if (!el.dataset.potvrzeno) { el.dataset.potvrzeno = '1'; el.style.background = 'var(--ruze-sv)'; toast('Klepni znovu pro smazání stránky'); break; }
+        await api.smazStranku(s); st.splice(+el.dataset.i, 1); await api.poradiStranek(st); await nactiData(); render(); break;
+      }
+      case 'prepsat': await prepsat(S.strankyRecept.id); break;
+      case 'prepsatZnovu': await prepsat(k.id); break;
+      case 'pozdeji': await nactiData(); domu(); toast('Recept čeká ve frontě Ke kontrole'); break;
+      case 'pridatStranu': S.strankyRecept = await api.detail(k.id); S.k = null; S.obr = 'stranky'; render(); window.scrollTo(0, 0); break;
+      case 'potvrdNejiste': k.nejista.splice(+el.dataset.i, 1); render(); break;
+      case 'smazUpoz': k.upozorneni.splice(+el.dataset.i, 1); render(); break;
+      case 'pridejSurovinu': k.skupiny[+el.dataset.g].suroviny.push({ mnozstvi: '', surovina: '' }); render(); document.querySelector(`[data-sm="${el.dataset.g}.${k.skupiny[+el.dataset.g].suroviny.length - 1}"]`)?.focus(); break;
+      case 'smazSurovinu': k.skupiny[+el.dataset.g].suroviny.splice(+el.dataset.i, 1); render(); break;
+      case 'pridejSkupinu': k.skupiny.push({ nazev: '', suroviny: [{ mnozstvi: '', surovina: '' }] }); render(); break;
+      case 'smazSkupinu': k.skupiny.splice(+el.dataset.g, 1); if (!k.skupiny.length) k.skupiny.push({ nazev: '', suroviny: [{ mnozstvi: '', surovina: '' }] }); render(); break;
+      case 'pridejKrok': k.postup.push(''); render(); document.querySelector(`[data-kp="${k.postup.length - 1}"]`)?.focus(); break;
+      case 'smazKrok': k.postup.splice(+el.dataset.i, 1); if (!k.postup.length) k.postup.push(''); render(); break;
+      case 'ulozit': await ulozitKontrolu(); break;
+      case 'nakup': S.nakupNasobek = 1; S.nakupMam = {}; jdi('nakup', { receptId: S.detail.id }); break;
+      case 'nasobek': S.nakupNasobek = Math.min(10, Math.max(1, (S.nakupNasobek || 1) + +el.dataset.o)); render(); break;
+      case 'mam': S.nakupMam = { ...S.nakupMam, [el.dataset.k]: !S.nakupMam[el.dataset.k] }; render(); break;
+      case 'poslatNakup': {
+        const t = textNakupu();
+        if (navigator.share) { try { await navigator.share({ title: 'Nákupní seznam', text: t }); } catch (err) { if (err.name !== 'AbortError') throw err; } }
+        else { await navigator.clipboard.writeText(t); toast('Seznam zkopírován – vlož ho do zprávy'); }
+        break;
+      }
+      case 'kopirovatNakup': await navigator.clipboard.writeText(textNakupu()); toast('Seznam zkopírován'); break;
+    }
+  } catch (err) { S.cekani = null; vPrekryvy(); zapisChybu(err.message || err); toast('Chyba: ' + (err.message || err)); }
+});
+
+// ============================================================
+// Start
+// ============================================================
+async function start() {
+  try {
+    const rel = await api.relace();
+    S.prihlasen = !!rel;
+    if (S.prihlasen) {
+      S.clen = await api.clen();
+      if (S.clen?.role) await nactiData();
+    }
+  } catch (e) { zapisChybu(e.message || e); }
+  S.nacteno = true; render();
+}
+if ('serviceWorker' in navigator && !DEMO && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+start();
+</script>
+</body>
+</html>
