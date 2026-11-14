@@ -179,7 +179,7 @@ h1.mensi { font-size: 32px; }
 const SUPABASE_URL = 'https://pqehuuamgecmdmrdhmza.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_6SgwttYu1LHUrAeInwv1Qw_chrfScN7';
 const FUNKCE = 'kucharka';
-const VERZE = '1.1';
+const VERZE = '1.2';
 // =====================================================================
 
 const DEMO = /VAS-PROJEKT/.test(SUPABASE_URL) || new URLSearchParams(location.search).has('demo');
@@ -254,6 +254,9 @@ async function otoc(blob) {
   const x = c.getContext('2d'); x.translate(c.width, 0); x.rotate(Math.PI / 2); x.drawImage(img, 0, 0);
   return await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.88));
 }
+
+// Které sloupce receptu odkazují na položku zařazení
+const SLOUPCE_ZAR = { kategorie: ['kategorie_id'], osoby: ['autor_id', 'poslal_id'], zdroje: ['zdroj_id'] };
 
 // ============================================================
 // Datová vrstva: Supabase, nebo ukázková data (?demo)
@@ -338,6 +341,11 @@ function vytvorSupabaseApi() {
     async novaOsoba(jmeno) { return ok(await sb.from('osoby').insert({ jmeno }).select('*').single()); },
     async novyZdroj(nazev) { return ok(await sb.from('zdroje').insert({ nazev }).select('*').single()); },
     async novaKategorie(nazev, rodic_id) { return ok(await sb.from('kategorie').insert({ nazev, rodic_id, poradi: 99 }).select('*').single()); },
+    async prejmenuj(tab, id, pole) { ok(await sb.from(tab).update(pole).eq('id', id)); },
+    async smazZarazeni(tab, id, cil) {
+      for (const sl of SLOUPCE_ZAR[tab]) ok(await sb.from('recepty').update({ [sl]: cil || null }).eq(sl, id));
+      ok(await sb.from(tab).delete().eq('id', id));
+    },
     async prepis(receptId) {
       const s = await this.relace();
       const r = await fetch(`${SUPABASE_URL}/functions/v1/${FUNKCE}?akce=prepis`, {
@@ -419,6 +427,16 @@ function vytvorDemoApi() {
     async novaOsoba(jmeno) { const o = osoba(jmeno); osoby.push(o); return kopie(o); },
     async novyZdroj(nazev) { const z = { id: id(), nazev }; zdroje.push(z); return kopie(z); },
     async novaKategorie(nazev, rodic_id) { return kopie(kat(nazev, rodic_id, 99)); },
+    async prejmenuj(tab, rid, pole) {
+      const seznam = { kategorie, osoby, zdroje }[tab]; const x = seznam.find((y) => y.id === rid);
+      const kl = tab === 'osoby' ? 'jmeno' : 'nazev';
+      if (seznam.some((y) => y.id !== rid && bezDiakritiky(y[kl]) === bezDiakritiky(pole[kl]) && (tab !== 'kategorie' || y.rodic_id === x.rodic_id))) throw new Error('duplicate key value');
+      Object.assign(x, pole);
+    },
+    async smazZarazeni(tab, rid, cil) {
+      for (const sl of SLOUPCE_ZAR[tab]) recepty.forEach((r) => { if (r[sl] === rid) r[sl] = cil || null; });
+      const seznam = { kategorie, osoby, zdroje }[tab]; seznam.splice(seznam.findIndex((y) => y.id === rid), 1);
+    },
     async prepis() {
       await cekej(1800);
       return { model: 'claude-sonnet-5-5 (ukázka)', cena_kc: 0.31, recept: {
@@ -475,7 +493,7 @@ function render() {
   if (!S.nacteno) html = '<div class="prazdne"><span class="ruka">Kuchařka</span>Načítám…</div>';
   else if (!S.prihlasen) html = vLogin();
   else if (S.clen && !S.clen.role) html = vNeniClen();
-  else html = ({ domu: vDomu, kategorie: vKategorie, detail: vDetail, pridat: vPridat, stranky: vStranky, kontrola: vKontrola, nastaveni: vNastaveni, nakup: vNakup }[S.obr] || vDomu)();
+  else html = ({ domu: vDomu, kategorie: vKategorie, detail: vDetail, pridat: vPridat, stranky: vStranky, kontrola: vKontrola, nastaveni: vNastaveni, nakup: vNakup, zarazeni: vZarazeni, polozka: vPolozka }[S.obr] || vDomu)();
   if (chyby.length) html += `<div class="chyby">${esc(chyby.join('\n'))}</div>`;
   if (S.obr !== 'kontrola' || !S.prihlasen) html += `<div class="paticka">Kuchařka · verze ${VERZE}${DEMO ? ' · ukázková data' : ''}</div>`;
   app.innerHTML = html;
@@ -759,10 +777,94 @@ function vNastaveni() {
     <div class="pole"><span class="popis">Role</span><span>${S.clen?.role === 'spravce' ? 'správce' : 'člen rodiny'}</span></div>
     <div class="pole"><span class="popis">Verze</span><span>${VERZE}${DEMO ? ' (ukázková data)' : ''}</span></div>
   </div>
-  <div class="sekce"><div class="nadpis">Osoby (od koho jsou recepty)</div><div class="karta">
-    ${S.data.osoby.map((o) => `<div class="radek" style="cursor:default"><span class="hl"><span class="nazev">${esc(o.jmeno)}</span></span><span class="pocet">${S.data.recepty.filter((r) => r.autor_id === o.id).length}</span></div>`).join('') || '<div class="prazdne">Zatím žádné.</div>'}
-  </div></div>
+  <div class="karta"><button class="radek" data-a="zarazeni"><span class="hl"><span class="nazev">Zařazení</span><span class="meta">kategorie, osoby, zdroje</span></span>${IK.sipka}</button></div>
   <button class="tlacitko druhe" data-a="odhlasit">Odhlásit</button>`;
+}
+
+// ---------- Zařazení: správa seznamů ----------
+const pocetU = (tab, id) => S.data.recepty.filter((r) => SLOUPCE_ZAR[tab].some((sl) => r[sl] === id)).length;
+const nazevPol = (tab, x) => (tab === 'osoby' ? x.jmeno : x.nazev);
+const radekPol = (tab, x) => `<button class="radek" data-a="polozka" data-tab="${tab}" data-id="${x.id}"><span class="hl"><span class="nazev">${esc(nazevPol(tab, x))}</span></span><span class="pocet">${pocetU(tab, x.id)}</span>${IK.sipka}</button>`;
+
+function vZarazeni() {
+  const seg = S.zarSeg || 'kategorie';
+  let telo = '';
+  if (seg === 'kategorie') {
+    telo = hlavniKat().map((h) => `<div class="sekce"><div class="nadpis">${esc(h.nazev)}</div><div class="karta">
+      ${podKat(h.id).map((p) => radekPol('kategorie', p)).join('')}
+      <button class="pridej" data-a="novaPolozka" data-tab="kategorie" data-rodic="${h.id}">+ Podkategorie</button></div></div>`).join('');
+  } else {
+    const seznam = seg === 'osoby' ? S.data.osoby : S.data.zdroje;
+    telo = `<div class="karta">${seznam.map((x) => radekPol(seg, x)).join('')}
+      <button class="pridej" data-a="novaPolozka" data-tab="${seg}">+ ${seg === 'osoby' ? 'Nová osoba' : 'Nový zdroj'}</button></div>`;
+  }
+  return `
+  <div class="lista"><button class="odkaz" data-a="zpet">${IK.zpet} Nastavení</button></div>
+  <div><h1>Zařazení</h1><div class="podtitul">Číslo vpravo = počet receptů</div></div>
+  <div class="segment">
+    <button class="${seg === 'kategorie' ? 'vybrano' : ''}" data-a="zarSeg" data-h="kategorie">Kategorie</button>
+    <button class="${seg === 'osoby' ? 'vybrano' : ''}" data-a="zarSeg" data-h="osoby">Osoby</button>
+    <button class="${seg === 'zdroje' ? 'vybrano' : ''}" data-a="zarSeg" data-h="zdroje">Zdroje</button>
+  </div>
+  ${telo}`;
+}
+
+function vPolozka() {
+  const p = S.pol; if (!p) return '';
+  const nova = !p.id; const tab = p.tab;
+  const x = nova ? null : ({ kategorie: S.data.kategorie, osoby: S.data.osoby, zdroje: S.data.zdroje }[tab]).find((y) => y.id === p.id);
+  if (!nova && !x) return vZarazeni();
+  const druh = { kategorie: 'podkategorie', osoby: 'osoba', zdroje: 'zdroj' }[tab];
+  const rodic = tab === 'kategorie' ? katPodle(nova ? p.rodic_id : x.rodic_id) : null;
+  const pocet = nova ? 0 : pocetU(tab, p.id);
+  let cile = '';
+  if (!nova && S.clen?.role === 'spravce' && pocet) {
+    if (tab === 'kategorie') {
+      cile = hlavniKat().map((h) => `<optgroup label="${esc(h.nazev)}"><option value="${h.id}" ${h.id === x.rodic_id ? 'selected' : ''}>${esc(h.nazev)} – bez podkategorie</option>
+        ${podKat(h.id).filter((k) => k.id !== p.id).map((k) => `<option value="${k.id}">${esc(k.nazev)}</option>`).join('')}</optgroup>`).join('');
+    } else {
+      const seznam = tab === 'osoby' ? S.data.osoby : S.data.zdroje;
+      cile = `<option value="">— neuvedeno —</option>` + seznam.filter((y) => y.id !== p.id).map((y) => `<option value="${y.id}">${esc(nazevPol(tab, y))}</option>`).join('');
+    }
+  }
+  return `
+  <div class="lista"><button class="odkaz" data-a="zpet">Zrušit</button><span class="stred">${nova ? 'Nová ' + (druh === 'zdroj' ? 'položka' : druh) : 'Upravit'}</span><button class="odkaz tucny" data-a="ulozPolozku">Uložit</button></div>
+  <h1 class="mensi">${nova ? (tab === 'kategorie' ? 'Nová podkategorie' : tab === 'osoby' ? 'Nová osoba' : 'Nový zdroj') : esc(nazevPol(tab, x))}</h1>
+  <div class="karta">
+    ${rodic ? `<div class="pole"><span class="popis">Hlavní kategorie</span><span>${esc(rodic.nazev)}</span></div>` : ''}
+    <div class="pole"><label for="pol-nazev">${tab === 'osoby' ? 'Jméno' : 'Název'}</label><input id="pol-nazev" value="${esc(nova ? '' : nazevPol(tab, x))}" placeholder="${tab === 'osoby' ? 'např. Babička Marie' : tab === 'zdroje' ? 'např. Kuchařka s paprikami' : 'např. Perník'}" autocomplete="off"></div>
+    ${nova ? '' : `<div class="pole"><span class="popis">Použito</span><span>${pocetRec(pocet)}</span></div>`}
+  </div>
+  <button class="tlacitko" data-a="ulozPolozku">Uložit</button>
+  ${!nova && S.clen?.role === 'spravce' ? `<div class="sekce" style="margin-top:12px"><div class="nadpis">Smazat</div><div class="karta">
+    ${pocet ? `<div class="pole"><label for="pol-cil">${esc(pocetRec(pocet))} přesunout do</label><select id="pol-cil">${cile}</select></div>` : '<div class="pole"><span class="popis">Není použito u žádného receptu</span></div>'}
+  </div><button class="tlacitko cervene" data-a="smazPolozku">Smazat ${esc(druh)}</button></div>` : ''}`;
+}
+
+async function ulozPolozku() {
+  const p = S.pol; const tab = p.tab;
+  const nazev = (document.getElementById('pol-nazev')?.value || '').trim();
+  if (!nazev) { toast('Doplň název'); document.getElementById('pol-nazev')?.focus(); return; }
+  const kl = tab === 'osoby' ? 'jmeno' : 'nazev';
+  try {
+    if (!p.id) {
+      if (tab === 'kategorie') await api.novaKategorie(nazev, p.rodic_id);
+      else if (tab === 'osoby') await api.novaOsoba(nazev);
+      else await api.novyZdroj(nazev);
+    } else await api.prejmenuj(tab, p.id, { [kl]: nazev });
+  } catch (e) {
+    if (/duplicate key|unique/i.test(e.message || '')) { toast('„' + nazev + '“ už existuje. Ke sloučení použij Smazat a přesuň recepty do ní.'); return; }
+    throw e;
+  }
+  await nactiData(); S.pol = null; zpet(); toast('Uloženo');
+}
+
+async function smazPolozku(el) {
+  const p = S.pol;
+  if (!el.dataset.potvrzeno) { el.dataset.potvrzeno = '1'; el.textContent = 'Opravdu smazat? Klepni znovu'; return; }
+  const cil = document.getElementById('pol-cil')?.value || null;
+  await api.smazZarazeni(p.tab, p.id, cil);
+  await nactiData(); S.pol = null; zpet(); toast('Smazáno');
 }
 
 function vPrekryvy() {
@@ -1018,6 +1120,12 @@ document.addEventListener('click', async (e) => {
       case 'odhlasit': await api.odhlasit(); S.prihlasen = false; S.clen = null; domu(); break;
       case 'zpet': S.k = null; zpet(); break;
       case 'nastaveni': jdi('nastaveni'); break;
+      case 'zarazeni': jdi('zarazeni'); break;
+      case 'zarSeg': S.zarSeg = el.dataset.h; render(); break;
+      case 'polozka': jdi('polozka', { pol: { tab: el.dataset.tab, id: el.dataset.id } }); break;
+      case 'novaPolozka': jdi('polozka', { pol: { tab: el.dataset.tab, id: null, rodic_id: el.dataset.rodic || null } }); setTimeout(() => document.getElementById('pol-nazev')?.focus(), 50); break;
+      case 'ulozPolozku': await ulozPolozku(); break;
+      case 'smazPolozku': await smazPolozku(el); break;
       case 'pridat': jdi('pridat'); break;
       case 'segment': S.segment = el.dataset.h; render(); break;
       case 'osoba': S.osoba = el.dataset.id || null; render(); break;
