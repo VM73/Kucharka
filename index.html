@@ -130,7 +130,11 @@ h1.mensi { font-size: 32px; }
 .pole textarea { resize: vertical; min-height: 44px; }
 .pole input.serif { font-family: var(--serif); font-size: 26px; font-weight: 700; }
 .pole textarea.ruka { font-family: var(--ruka); font-size: 22px; }
-.pole select { -webkit-appearance: none; appearance: none; background: none; color: var(--akcent-tm); font-weight: 600; }
+.pole select { -webkit-appearance: none; appearance: none; color: var(--akcent-tm); font-weight: 600; cursor: pointer; padding-right: 28px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%239A9089' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 4px center; }
+.pole input.vyber { color: var(--akcent-tm); font-weight: 600; }
+.pole .napoveda { font-size: 12px; color: var(--salvej); min-height: 0; }
+.pole .napoveda:empty { display: none; }
 .edit-sur { display: grid; grid-template-columns: 96px minmax(0, 1fr) 36px; gap: 8px; align-items: center; padding: 4px 8px 4px 14px; border-bottom: 1px solid var(--cara); }
 .edit-sur input { border: none; background: transparent; font-size: 16px; min-height: 38px; outline: none; width: 100%; }
 .edit-sur input.mn { font-weight: 600; color: var(--akcent-tm); text-align: right; }
@@ -179,7 +183,7 @@ h1.mensi { font-size: 32px; }
 const SUPABASE_URL = 'https://pqehuuamgecmdmrdhmza.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_6SgwttYu1LHUrAeInwv1Qw_chrfScN7';
 const FUNKCE = 'kucharka';
-const VERZE = '1.2';
+const VERZE = '1.3';
 // =====================================================================
 
 const DEMO = /VAS-PROJEKT/.test(SUPABASE_URL) || new URLSearchParams(location.search).has('demo');
@@ -710,13 +714,13 @@ function zKontroly(d) {
     const h = hlavniKat().find((x) => bezDiakritiky(x.nazev) === bezDiakritiky(n.kategorie)); hlavniId = h?.id || null;
     if (h && n.podkategorie) { const p = podKat(h.id).find((x) => bezDiakritiky(x.nazev) === bezDiakritiky(n.podkategorie)); if (p) podId = p.id; else { podId = '+'; podNova = n.podkategorie; } }
   }
-  let autorId = d.autor_id || '', autorNovy = '';
-  if (!autorId && n.autor) { const o = S.data.osoby.find((x) => bezDiakritiky(x.jmeno) === bezDiakritiky(n.autor)); if (o) autorId = o.id; else { autorId = '+'; autorNovy = n.autor; } }
+  const autorText = osobaPodle(d.autor_id)?.jmeno || (d.autor_id ? '' : (n.autor || ''));
+  const zdrojText = S.data.zdroje.find((z) => z.id === d.zdroj_id)?.nazev || '';
   const stitky = (d.stitky?.length ? d.stitky : (n.stitky || [])).join(', ');
   const skupiny = seskup(d.suroviny).map((g) => ({ nazev: g.nazev || '', suroviny: g.suroviny.map((s) => ({ mnozstvi: s.mnozstvi || '', surovina: s.surovina || '', cislo: s.cislo ?? null, jednotka: s.jednotka ?? null, gramy: s.gramy ?? null })) }));
   return {
     id: d.id, nazev: d.nazev === 'Nový recept' ? '' : d.nazev, porce: d.porce || '', stitky,
-    hlavniId, podId, podNova, autorId, autorNovy, zdrojId: d.zdroj_id || '',
+    hlavniId, podId, podNova, autorText, zdrojText,
     skupiny: skupiny.length ? skupiny : [{ nazev: '', suroviny: [{ mnozstvi: '', surovina: '' }] }],
     postup: d.postup?.length ? d.postup.slice() : [''],
     poznamky: d.poznamky || '', nejista: (d.nejista || []).slice(), upozorneni: (d.upozorneni || []).slice(),
@@ -724,6 +728,12 @@ function zKontroly(d) {
   };
 }
 
+function napovedaNova(tab, text) {
+  const t = bezDiakritiky(text).trim(); if (!t) return '';
+  const seznam = tab === 'osoby' ? S.data.osoby.map((o) => o.jmeno) : S.data.zdroje.map((z) => z.nazev);
+  if (seznam.some((x) => bezDiakritiky(x) === t)) return '';
+  return tab === 'osoby' ? '+ nová osoba – vytvoří se při uložení' : '+ nový zdroj – vytvoří se při uložení';
+}
 function vKontrola() {
   const k = S.k; if (!k) return '';
   const subs = k.hlavniId ? podKat(k.hlavniId) : [];
@@ -738,8 +748,10 @@ function vKontrola() {
   <div class="sekce"><div class="nadpis">Zařazení ${k.novy ? '· návrh AI' : ''}</div><div class="karta">
     <div class="pole"><label for="k-hlavni">Kategorie</label><select id="k-hlavni" data-k="hlavniId"><option value="">— vyber —</option>${hlavniKat().map((h) => `<option value="${h.id}" ${k.hlavniId === h.id ? 'selected' : ''}>${esc(h.nazev)}</option>`).join('')}</select></div>
     <div class="pole"><label for="k-pod">Podkategorie</label><select id="k-pod" data-k="podId" ${k.hlavniId ? '' : 'disabled'}><option value="">— žádná —</option>${subs.map((p) => `<option value="${p.id}" ${k.podId === p.id ? 'selected' : ''}>${esc(p.nazev)}</option>`).join('')}<option value="+" ${k.podId === '+' ? 'selected' : ''}>${k.podNova ? esc(k.podNova) + ' (nová)' : '+ Nová podkategorie…'}</option></select></div>
-    <div class="pole"><label for="k-autor">Od koho</label><select id="k-autor" data-k="autorId"><option value="">— neuvedeno —</option>${S.data.osoby.map((o) => `<option value="${o.id}" ${k.autorId === o.id ? 'selected' : ''}>${esc(o.jmeno)}</option>`).join('')}<option value="+" ${k.autorId === '+' ? 'selected' : ''}>${k.autorNovy ? esc(k.autorNovy) + ' (nová osoba)' : '+ Nová osoba…'}</option></select></div>
-    <div class="pole"><label for="k-zdroj">Zdroj</label><select id="k-zdroj" data-k="zdrojId"><option value="">— neuvedeno —</option>${S.data.zdroje.map((z) => `<option value="${z.id}" ${k.zdrojId === z.id ? 'selected' : ''}>${esc(z.nazev)}</option>`).join('')}</select></div>
+    <div class="pole"><label for="k-autor">Od koho</label><input id="k-autor" class="vyber" data-k="autorText" list="dl-osoby" value="${esc(k.autorText)}" placeholder="Napiš nebo vyber…" autocomplete="off">
+      <datalist id="dl-osoby">${S.data.osoby.map((o) => `<option value="${esc(o.jmeno)}"></option>`).join('')}</datalist><span class="napoveda" id="nap-autor">${napovedaNova('osoby', k.autorText)}</span></div>
+    <div class="pole"><label for="k-zdroj">Zdroj</label><input id="k-zdroj" class="vyber" data-k="zdrojText" list="dl-zdroje" value="${esc(k.zdrojText)}" placeholder="Napiš nebo vyber…" autocomplete="off">
+      <datalist id="dl-zdroje">${S.data.zdroje.map((z) => `<option value="${esc(z.nazev)}"></option>`).join('')}</datalist><span class="napoveda" id="nap-zdroj">${napovedaNova('zdroje', k.zdrojText)}</span></div>
     <div class="pole"><label for="k-porce">Porce / množství</label><input id="k-porce" data-k="porce" value="${esc(k.porce)}" placeholder="např. 1 plech"></div>
     <div class="pole"><label for="k-stitky">Štítky</label><input id="k-stitky" data-k="stitky" value="${esc(k.stitky)}" placeholder="Vánoce, rychlé…"></div>
   </div></div>
@@ -994,7 +1006,11 @@ document.addEventListener('input', (e) => {
     return;
   }
   const k = S.k; if (!k) return;
-  if (t.dataset.k && t.tagName !== 'SELECT') k[t.dataset.k] = t.value;
+  if (t.dataset.k && t.tagName !== 'SELECT') {
+    k[t.dataset.k] = t.value;
+    if (t.dataset.k === 'autorText') document.getElementById('nap-autor').textContent = napovedaNova('osoby', t.value);
+    if (t.dataset.k === 'zdrojText') document.getElementById('nap-zdroj').textContent = napovedaNova('zdroje', t.value);
+  }
   else if (t.dataset.sk != null) k.skupiny[+t.dataset.sk].nazev = t.value;
   else if (t.dataset.sm) { const [g, i] = t.dataset.sm.split('.').map(Number); const s = k.skupiny[g].suroviny[i]; s.mnozstvi = t.value; s.cislo = null; s.jednotka = null; s.gramy = prepoctiGramy(t.value); }
   else if (t.dataset.ss) { const [g, i] = t.dataset.ss.split('.').map(Number); k.skupiny[g].suroviny[i].surovina = t.value; }
@@ -1024,7 +1040,6 @@ document.addEventListener('change', async (e) => {
       const k = S.k; const pole = t.dataset.k;
       if (pole === 'hlavniId') { k.hlavniId = t.value || null; k.podId = ''; k.podNova = ''; render(); return; }
       if (pole === 'podId' && t.value === '+') { const n = prompt('Název nové podkategorie:', k.podNova || ''); if (n?.trim()) { k.podId = '+'; k.podNova = n.trim(); } render(); return; }
-      if (pole === 'autorId' && t.value === '+') { const n = prompt('Jméno osoby:', k.autorNovy || ''); if (n?.trim()) { k.autorId = '+'; k.autorNovy = n.trim(); } render(); return; }
       k[pole] = t.value; return;
     }
     if (t.dataset.vstup && t.files?.length) {
@@ -1088,12 +1103,13 @@ async function ulozitKontrolu() {
       if (k.podId === '+' && k.podNova) katId = (podKat(k.hlavniId).find((p) => bezDiakritiky(p.nazev) === bezDiakritiky(k.podNova)) || await api.novaKategorie(k.podNova, k.hlavniId)).id;
       else if (k.podId) katId = k.podId;
     }
-    let autorId = k.autorId || null;
-    if (autorId === '+') autorId = k.autorNovy ? (S.data.osoby.find((o) => bezDiakritiky(o.jmeno) === bezDiakritiky(k.autorNovy)) || await api.novaOsoba(k.autorNovy)).id : null;
+    const autorT = k.autorText.trim(); const zdrojT = k.zdrojText.trim();
+    const autorId = autorT ? (S.data.osoby.find((o) => bezDiakritiky(o.jmeno) === bezDiakritiky(autorT)) || await api.novaOsoba(autorT)).id : null;
+    const zdrojId = zdrojT ? (S.data.zdroje.find((z) => bezDiakritiky(z.nazev) === bezDiakritiky(zdrojT)) || await api.novyZdroj(zdrojT)).id : null;
     const suroviny = [];
     for (const g of k.skupiny) for (const s of g.suroviny) if (s.surovina.trim() || s.mnozstvi.trim()) suroviny.push({ skupina: g.nazev.trim() || null, mnozstvi: s.mnozstvi.trim(), cislo: s.cislo ?? null, jednotka: s.jednotka ?? null, surovina: s.surovina.trim() || '?', gramy: s.gramy ?? prepoctiGramy(s.mnozstvi) });
     await api.ulozRecept(k.id, {
-      nazev: k.nazev.trim(), porce: k.porce.trim() || null, kategorie_id: katId, autor_id: autorId, zdroj_id: k.zdrojId || null,
+      nazev: k.nazev.trim(), porce: k.porce.trim() || null, kategorie_id: katId, autor_id: autorId, zdroj_id: zdrojId,
       stitky: k.stitky.split(',').map((x) => x.trim()).filter(Boolean), postup: k.postup.map((x) => x.trim()).filter(Boolean),
       poznamky: k.poznamky.trim() || null, nejista: k.nejista, upozorneni: k.upozorneni, stav: 'hotovo',
     }, suroviny);
