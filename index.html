@@ -183,7 +183,7 @@ h1.mensi { font-size: 32px; }
 const SUPABASE_URL = 'https://klpcgnivfvczvvyoqzal.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_6mo7Xg3GQ4GTi9Qu7AAeKw_HKPSXacV';
 const FUNKCE = 'kucharka';
-const VERZE = '1.4';
+const VERZE = '1.5';
 // =====================================================================
 
 const DEMO = /VAS-PROJEKT/.test(SUPABASE_URL) || new URLSearchParams(location.search).has('demo');
@@ -695,7 +695,7 @@ function vStranky() {
       <div class="ovl"><button data-a="otocit" data-i="${i}" aria-label="Otočit stránku">${IK.otocit}</button>
       <button data-a="posun" data-i="${i}" data-o="-1" aria-label="Posunout dopředu" ${i === 0 ? 'disabled' : ''}>${IK.vlevo}</button>
       <button data-a="posun" data-i="${i}" data-o="1" aria-label="Posunout dozadu" ${i === st.length - 1 ? 'disabled' : ''}>${IK.vpravo}</button>
-      ${S.clen?.role === 'spravce' ? `<button data-a="smazStranu" data-i="${i}" aria-label="Smazat stránku" style="color:var(--ruze)">${IK.kos}</button>` : ''}</div></div>`).join('')}
+      ${S.clen ? `<button data-a="smazStranu" data-i="${i}" aria-label="Smazat stránku" style="color:var(--ruze)">${IK.kos}</button>` : ''}</div></div>`).join('')}
     <label class="pridat-stranu"><span class="kruh">${IK.fotoPlus}</span><span style="font-weight:600">Další stránka</span><span style="font-size:12px;color:var(--text2)">vyfotit</span>
       <input class="skryty" type="file" accept="image/*" capture="environment" data-vstup="dalsiStrana"></label>
   </div>
@@ -890,7 +890,7 @@ function vPrekryvy() {
   if (S.prekryv) {
     const p = S.prekryv; const d = document.createElement('div'); d.className = 'prekryv';
     const polozky = p.polozky.map((x, i) => `<div style="width:100%;display:flex;flex-direction:column;align-items:center;gap:6px">${img(p.bucket, x.cesta, 'data-a="zoom"')}
-      ${p.mazani && S.clen?.role === 'spravce' ? `<button data-a="smazFotku" data-i="${i}" style="color:#FF9A8A;background:none;border:none;min-height:40px;cursor:pointer">Smazat fotku</button>` : ''}</div>`).join('');
+      ${p.mazani && (S.clen?.role === 'spravce' || S.detail?.stav === 'ke_kontrole') ? `<button data-a="smazFotku" data-i="${i}" style="color:#FF9A8A;background:none;border:none;min-height:40px;cursor:pointer">Smazat fotku</button>` : ''}</div>`).join('');
     d.innerHTML = `<div class="hora"><span>${esc(p.nadpis)}</span><button data-a="zavritPrekryv">Hotovo</button></div>
       <div class="obsah">${polozky}${p.pridat ? `<label style="color:#fff;min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 0 24px">${IK.fotoPlus} Přidat další fotku<input class="skryty" type="file" accept="image/*" data-vstup="fotka"></label>` : ''}</div>`;
     document.body.appendChild(d); dosadObrazky(d);

@@ -1,0 +1,23 @@
+# Týdenní ping proti uspání Supabase projektu mtb-servis (free plán uspí po 7 dnech bez aktivity).
+# Volá kucharka.ping() s publishable klíčem (stejný veřejný klíč jako v index.html). ~1 min Actions/měsíc.
+name: ping-supabase
+on:
+  schedule:
+    - cron: '23 4 * * 1,4'   # po a čt 04:23 UTC (2× týdně – rezerva, když jeden běh GitHub vynechá)
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping kucharka.ping()
+        env:
+          URL: https://klpcgnivfvczvvyoqzal.supabase.co/rest/v1/rpc/ping
+          KEY: sb_publishable_6mo7Xg3GQ4GTi9Qu7AAeKw_HKPSXacV
+        run: |
+          kod=$(curl -sS -o odpoved.txt -w '%{http_code}' -X POST "$URL" \
+            -H "apikey: $KEY" -H "Content-Type: application/json" \
+            -H "Content-Profile: kucharka" -d '{}')
+          echo "HTTP $kod"; cat odpoved.txt; echo
+          test "$kod" = "200" && grep -q true odpoved.txt

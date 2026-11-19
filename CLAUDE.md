@@ -20,8 +20,13 @@ Mobilní webová appka (PWA na GitHub Pages) pro digitalizaci rodinných recept�
 ## Migrace (`supabase/migrations/`)
 - `kucharka_001_init.sql` – schéma, tabulky, funkce, RLS, buckety (spuštěno v mtb-servis).
 - `kucharka_001_rollback.sql` – rollback k 001.
+- `kucharka_002_clen_maze_rozpracovane.sql` – člen smí mazat stránky a fotky pokrmu u receptů `ke_kontrole` (tabulky i Storage) + `kucharka.ping()` pro týdenní ping (anon, vrací jen true). Rollback `kucharka_002_rollback.sql`.
+- `kucharka_002b_ping_usage` – grant usage on schema kucharka to anon (spuštěno samostatně v Supabase 19. 11.; v souboru 002 je grant uveden také).
+
+## Ping
+- `.github/workflows/ping.yml` – po a čt volá `rpc/ping` (schéma kucharka) s publishable klíčem; drží mtb-servis aktivní.
 
 ## Otevřené body
-- **kucharka_002**: člen nemůže smazat špatnou fotku stránky u rozpracovaného receptu – rozhodnout.
-- Týdenní ping proti uspání projektu + záloha.
-- Úklid pracovního projektu (`pqehuuamgecmdmrdhmza`) po přesunu.
+- v1.5 nasazena 19. 11. – ověřit na rodinném účtu (vladanmarekcooking@gmail.com) mazání stránky u rozpracovaného receptu.
+- Záloha (pg_dump) mtb-servis – zatím není.
+- Úklid pracovního projektu (`pqehuuamgecmdmrdhmza`) po přesunu – průzkum hotový 19. 11.
