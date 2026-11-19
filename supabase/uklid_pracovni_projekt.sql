@@ -1,12 +1,14 @@
 -- =====================================================================
 -- Úklid Kuchařky z PRACOVNÍHO projektu „servisní záznamy“ (pqehuuamgecmdmrdhmza)
--- NEspouštět v mtb-servis! Spustit až po ověření v1.4/v1.5 v mtb-servis.
+-- SPUŠTĚNO 19. 11. 2026 jako migrace kucharka_uklid_po_presunu (v pracovním projektu).
+-- Buckety stranky/pokrmy smazány předtím v Dashboardu; Edge Function kucharka
+-- a secrety ANTHROPIC_API_KEY a AI_PROVIDER smazány v Dashboardu po SQL.
 -- Průzkum 19. 11. 2026: tabulky/funkce níže používá jen Kuchařka;
 -- opravneni/kalibrace mají vlastní funkce ve svých schématech, novy_uzivatel
 -- ani klima/servis na tyto tabulky nesahají; FK vedou jen mezi tabulkami Kuchařky.
 --
 -- KROK 0 (před SQL): buckety „stranky“ (23 souborů) a „pokrmy“ (1 soubor)
---   vyprázdnit a smazat v Dashboardu → Storage (SQL mazání souborů Supabase blokuje).
+--   smazat v Dashboardu → Storage (SQL mazání ze storage tabulek Supabase blokuje).
 -- =====================================================================
 begin;
 
@@ -16,8 +18,10 @@ drop policy "kucharka nahrava"  on storage.objects;
 drop policy "kucharka upravuje" on storage.objects;
 drop policy "kucharka maze"     on storage.objects;
 
--- Tabulky (pořadí podle cizích klíčů, bez CASCADE – kdyby na ně něco jiného
--- nečekaně odkazovalo, migrace spadne a nic se nesmaže)
+-- hledej_recepty vrací typ recepty → musí jít před tabulkou
+drop function public.hledej_recepty(text);
+
+-- Tabulky (pořadí podle cizích klíčů, bez CASCADE)
 drop table public.suroviny;
 drop table public.stranky;
 drop table public.fotky_pokrmu;
@@ -28,7 +32,6 @@ drop table public.zdroje;
 drop table public.clenove;
 
 -- Funkce
-drop function public.hledej_recepty(text);
 drop function public.recepty_hledani();
 drop function public.suroviny_obnov_recept();
 drop function public.je_clen();
@@ -39,11 +42,4 @@ drop function public.kucharka_smi();
 update public.profily set aplikace = array_remove(aplikace, 'kucharka')
  where 'kucharka' = any(aplikace);
 
--- Buckety (projdou jen prázdné – viz KROK 0)
-delete from storage.buckets where id in ('stranky','pokrmy');
-
 commit;
-
--- Po SQL ručně / přes konektor: smazat Edge Function „kucharka“ v pracovním projektu
--- (Dashboard → Edge Functions → kucharka → Delete) a její secret ANTHROPIC_API_KEY,
--- pokud ho nepoužívá jiná appka.

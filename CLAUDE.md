@@ -27,6 +27,6 @@ Mobilní webová appka (PWA na GitHub Pages) pro digitalizaci rodinných recept�
 - `.github/workflows/ping.yml` – po a čt volá `rpc/ping` (schéma kucharka) s publishable klíčem; drží mtb-servis aktivní.
 
 ## Otevřené body
-- v1.5 nasazena 19. 11. – ověřit na rodinném účtu (vladanmarekcooking@gmail.com) mazání stránky u rozpracovaného receptu.
+- v1.5 nasazena 19. 11. a ověřena na rodinném účtu (mazání u rozpracovaného receptu funguje).
 - Záloha (pg_dump) mtb-servis – zatím není.
-- Úklid pracovního projektu (`pqehuuamgecmdmrdhmza`) po přesunu – průzkum hotový 19. 11.
+- Úklid pracovního projektu hotový 19. 11. (tabulky, funkce, politiky, buckety stranky/pokrmy, Edge Function kucharka, secrety ANTHROPIC_API_KEY a AI_PROVIDER; starý klíč „kucharka“ v Anthropic Console smazán; 'kucharka' odebrána z profily.aplikace).
