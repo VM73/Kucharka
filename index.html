@@ -180,10 +180,10 @@ h1.mensi { font-size: 32px; }
 <script>
 'use strict';
 // ====== NASTAVENÍ – doplnit z Supabase → Project Settings → API ======
-const SUPABASE_URL = 'https://pqehuuamgecmdmrdhmza.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_6SgwttYu1LHUrAeInwv1Qw_chrfScN7';
+const SUPABASE_URL = 'https://klpcgnivfvczvvyoqzal.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_6mo7Xg3GQ4GTi9Qu7AAeKw_HKPSXacV';
 const FUNKCE = 'kucharka';
-const VERZE = '1.3';
+const VERZE = '1.4';
 // =====================================================================
 
 const DEMO = /VAS-PROJEKT/.test(SUPABASE_URL) || new URLSearchParams(location.search).has('demo');
@@ -273,7 +273,8 @@ function vytvorSupabaseApi() {
     setItem: (k, v) => { pamet[k] = v; setTimeout(() => { try { localStorage.setItem(k, v); } catch (e) { /* ignorovat */ } }, 0); },
     removeItem: (k) => { delete pamet[k]; setTimeout(() => { try { localStorage.removeItem(k); } catch (e) { /* ignorovat */ } }, 0); },
   };
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { storage: uloziste, storageKey: 'kucharka-auth', persistSession: true, autoRefreshToken: true } });
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { db: { schema: 'kucharka' }, auth: { storage: uloziste, storageKey: 'kucharka-auth-2', persistSession: true, autoRefreshToken: true } });
+  const BUCKET = { stranky: 'kucharka-stranky', pokrmy: 'kucharka-pokrmy' };
   const urlCache = new Map();
   const ok = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
   return {
@@ -318,30 +319,30 @@ function vytvorSupabaseApi() {
       const d = await this.detail(id);
       const s = d.stranky.map((x) => x.cesta); const f = d.fotky.map((x) => x.cesta);
       ok(await sb.from('recepty').delete().eq('id', id));
-      if (s.length) await sb.storage.from('stranky').remove(s);
-      if (f.length) await sb.storage.from('pokrmy').remove(f);
+      if (s.length) await sb.storage.from(BUCKET.stranky).remove(s);
+      if (f.length) await sb.storage.from(BUCKET.pokrmy).remove(f);
     },
     async nahraj(bucket, receptId, blob) {
       const cesta = `${receptId}/${noveId()}.jpg`;
-      ok(await sb.storage.from(bucket).upload(cesta, blob, { contentType: 'image/jpeg' }));
+      ok(await sb.storage.from(BUCKET[bucket] ?? bucket).upload(cesta, blob, { contentType: 'image/jpeg' }));
       return cesta;
     },
     async prepisSoubor(bucket, cesta, blob) {
-      ok(await sb.storage.from(bucket).upload(cesta, blob, { contentType: 'image/jpeg', upsert: true }));
+      ok(await sb.storage.from(BUCKET[bucket] ?? bucket).upload(cesta, blob, { contentType: 'image/jpeg', upsert: true }));
       urlCache.delete(bucket + '/' + cesta);
     },
-    async stahni(bucket, cesta) { return ok(await sb.storage.from(bucket).download(cesta)); },
+    async stahni(bucket, cesta) { return ok(await sb.storage.from(BUCKET[bucket] ?? bucket).download(cesta)); },
     async pridejStranku(receptId, blob, poradi) {
       const cesta = await this.nahraj('stranky', receptId, blob);
       return ok(await sb.from('stranky').insert({ recept_id: receptId, cesta, poradi }).select('*').single());
     },
-    async smazStranku(s) { ok(await sb.from('stranky').delete().eq('id', s.id)); await sb.storage.from('stranky').remove([s.cesta]); },
+    async smazStranku(s) { ok(await sb.from('stranky').delete().eq('id', s.id)); await sb.storage.from(BUCKET.stranky).remove([s.cesta]); },
     async poradiStranek(seznam) { for (const [i, s] of seznam.entries()) ok(await sb.from('stranky').update({ poradi: i }).eq('id', s.id)); },
     async pridejFotku(receptId, blob, poradi) {
       const cesta = await this.nahraj('pokrmy', receptId, blob);
       return ok(await sb.from('fotky_pokrmu').insert({ recept_id: receptId, cesta, poradi }).select('*').single());
     },
-    async smazFotku(f) { ok(await sb.from('fotky_pokrmu').delete().eq('id', f.id)); await sb.storage.from('pokrmy').remove([f.cesta]); },
+    async smazFotku(f) { ok(await sb.from('fotky_pokrmu').delete().eq('id', f.id)); await sb.storage.from(BUCKET.pokrmy).remove([f.cesta]); },
     async novaOsoba(jmeno) { return ok(await sb.from('osoby').insert({ jmeno }).select('*').single()); },
     async novyZdroj(nazev) { return ok(await sb.from('zdroje').insert({ nazev }).select('*').single()); },
     async novaKategorie(nazev, rodic_id) { return ok(await sb.from('kategorie').insert({ nazev, rodic_id, poradi: 99 }).select('*').single()); },
@@ -365,7 +366,7 @@ function vytvorSupabaseApi() {
     async url(bucket, cesta) {
       const k = bucket + '/' + cesta; const c = urlCache.get(k);
       if (c && c.do > Date.now()) return c.url;
-      const { data, error } = await sb.storage.from(bucket).createSignedUrl(cesta, 3600);
+      const { data, error } = await sb.storage.from(BUCKET[bucket] ?? bucket).createSignedUrl(cesta, 3600);
       if (error) { log('url', error); return null; }
       urlCache.set(k, { url: data.signedUrl, do: Date.now() + 3300 * 1000 });
       return data.signedUrl;
@@ -694,7 +695,7 @@ function vStranky() {
       <div class="ovl"><button data-a="otocit" data-i="${i}" aria-label="Otočit stránku">${IK.otocit}</button>
       <button data-a="posun" data-i="${i}" data-o="-1" aria-label="Posunout dopředu" ${i === 0 ? 'disabled' : ''}>${IK.vlevo}</button>
       <button data-a="posun" data-i="${i}" data-o="1" aria-label="Posunout dozadu" ${i === st.length - 1 ? 'disabled' : ''}>${IK.vpravo}</button>
-      <button data-a="smazStranu" data-i="${i}" aria-label="Smazat stránku" style="color:var(--ruze)">${IK.kos}</button></div></div>`).join('')}
+      ${S.clen?.role === 'spravce' ? `<button data-a="smazStranu" data-i="${i}" aria-label="Smazat stránku" style="color:var(--ruze)">${IK.kos}</button>` : ''}</div></div>`).join('')}
     <label class="pridat-stranu"><span class="kruh">${IK.fotoPlus}</span><span style="font-weight:600">Další stránka</span><span style="font-size:12px;color:var(--text2)">vyfotit</span>
       <input class="skryty" type="file" accept="image/*" capture="environment" data-vstup="dalsiStrana"></label>
   </div>
@@ -889,7 +890,7 @@ function vPrekryvy() {
   if (S.prekryv) {
     const p = S.prekryv; const d = document.createElement('div'); d.className = 'prekryv';
     const polozky = p.polozky.map((x, i) => `<div style="width:100%;display:flex;flex-direction:column;align-items:center;gap:6px">${img(p.bucket, x.cesta, 'data-a="zoom"')}
-      ${p.mazani ? `<button data-a="smazFotku" data-i="${i}" style="color:#FF9A8A;background:none;border:none;min-height:40px;cursor:pointer">Smazat fotku</button>` : ''}</div>`).join('');
+      ${p.mazani && S.clen?.role === 'spravce' ? `<button data-a="smazFotku" data-i="${i}" style="color:#FF9A8A;background:none;border:none;min-height:40px;cursor:pointer">Smazat fotku</button>` : ''}</div>`).join('');
     d.innerHTML = `<div class="hora"><span>${esc(p.nadpis)}</span><button data-a="zavritPrekryv">Hotovo</button></div>
       <div class="obsah">${polozky}${p.pridat ? `<label style="color:#fff;min-height:44px;display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 0 24px">${IK.fotoPlus} Přidat další fotku<input class="skryty" type="file" accept="image/*" data-vstup="fotka"></label>` : ''}</div>`;
     document.body.appendChild(d); dosadObrazky(d);

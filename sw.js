@@ -1,5 +1,5 @@
 // Service worker Kuchařky – při změně appky zvýšit číslo verze
-const CACHE = 'kucharka-v1-3';
+const CACHE = 'kucharka-v1-4';
 const SOUBORY = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {

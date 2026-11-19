@@ -1,13 +1,16 @@
 // Supabase Edge Function „kucharka“ – přepis receptů z fotek pomocí AI
 // Akce: POST ?akce=prepis  { recept_id }  → strukturovaný recept (JSON)
 //       GET  ?akce=stav                    → kontrola, že funkce běží
+// Projekt mtb-servis, schéma „kucharka“, bucket „kucharka-stranky“.
 // Secrets: AI_PROVIDER (claude | openai), ANTHROPIC_API_KEY, OPENAI_API_KEY, volitelně AI_MODEL
+// Denní strop AI přepisů pro roli „clen“ (správce bez stropu), log v kucharka.ai_log.
 // Verify JWT: vypnuto – přihlášení se ověřuje níže v kódu.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { encodeBase64 } from "jsr:@std/encoding@1/base64";
 
-const VERZE = "3";
+const VERZE = "4";
+const DENNI_LIMIT_CLEN = 20;
 const KURZ_USD_CZK = 23;
 
 // Ceny za 1M tokenů v USD (vstup, výstup) – 10/2026
@@ -175,18 +178,29 @@ Deno.serve(async (req) => {
 
   if (akce === "stav") return odpoved({ ok: true, verze: VERZE, provider });
 
-  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+    db: { schema: "kucharka" },
+  });
 
   // Ověření přihlášeného člena rodiny
   const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
   const { data: u, error: chybaUzivatele } = await admin.auth.getUser(jwt);
   if (chybaUzivatele || !u?.user) return odpoved({ chyba: "Nepřihlášen" }, 401);
-  const { data: clen } = await admin.from("clenove").select("jmeno").eq("user_id", u.user.id).maybeSingle();
+  const { data: clen } = await admin.from("clenove").select("jmeno, role").eq("user_id", u.user.id).maybeSingle();
   if (!clen) return odpoved({ chyba: "Účet není členem kuchařky" }, 403);
 
   if (akce !== "prepis" || req.method !== "POST") return odpoved({ chyba: "Neznámá akce" }, 400);
 
   try {
+    if (clen.role !== "spravce") {
+      const od = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const { count } = await admin.from("ai_log").select("id", { count: "exact", head: true })
+        .eq("user_id", u.user.id).eq("ok", true).gte("kdy", od);
+      if ((count ?? 0) >= DENNI_LIMIT_CLEN) {
+        return odpoved({ chyba: `Denní limit ${DENNI_LIMIT_CLEN} AI přepisů je vyčerpán, zkus to zítra.` }, 429);
+      }
+    }
+
     const { recept_id } = await req.json();
     if (!recept_id) return odpoved({ chyba: "Chybí recept_id" }, 400);
 
@@ -195,7 +209,7 @@ Deno.serve(async (req) => {
 
     const obrazky: string[] = [];
     for (const s of stranky) {
-      const { data: soubor, error } = await admin.storage.from("stranky").download(s.cesta);
+      const { data: soubor, error } = await admin.storage.from("kucharka-stranky").download(s.cesta);
       if (error || !soubor) throw new Error(`Nelze načíst stránku ${s.cesta}`);
       obrazky.push(encodeBase64(new Uint8Array(await soubor.arrayBuffer())));
     }
@@ -216,9 +230,11 @@ Deno.serve(async (req) => {
     const [cIn, cOut] = CENY[model] ?? [2, 10];
     const cenaKc = Math.round(((v.vstup * cIn + v.vystup * cOut) / 1e6) * KURZ_USD_CZK * 100) / 100;
 
+    await admin.from("ai_log").insert({ user_id: u.user.id, model, tokeny_vstup: v.vstup, tokeny_vystup: v.vystup, cena_kc: cenaKc, ok: true });
     return odpoved({ recept: v.data, model, tokeny: { vstup: v.vstup, vystup: v.vystup }, cena_kc: cenaKc });
   } catch (e) {
     console.error(e);
+    await admin.from("ai_log").insert({ user_id: u.user.id, ok: false });
     return odpoved({ chyba: String((e as Error).message ?? e) }, 500);
   }
 });
